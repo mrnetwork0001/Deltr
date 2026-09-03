@@ -4,9 +4,9 @@
 > **Target Event:** Binance Agent OS Mini Hackathon ($60,000 USDC Prize Pool)  
 > **Host:** Binance (`@Binance`)  
 > **Submission Deadline:** September 8, 2026 @ 23:59 UTC  
-> **Target Prize:** 1st Place (Track B: $40,000 USDC Pool & Track A: $20,000 USDC Pool)  
+> **Target:** Track A (judged) + Track B task completion  
 > **Primary Tracks:** Track B (Connect your MCPs and trade) & Track A (Build an AI agent with Agent OS)  
-> **Core Stack:** Binance Agent OS + Binance MCP Server Suite + PancakeSwap DEX + Python 3.11 + Next.js 14  
+> **Core Stack:** Binance Agent OS (hosted Binance MCP Server + Skills Hub) + Deltr MCP server + PancakeSwap V3 quotes + Binance Futures testnet + Python 3.11 + Next.js 14  
 
 ---
 
@@ -16,9 +16,10 @@
    Always consult [DELTR_PROJECT_SPEC.md](file:///Users/mrnetwork/Deltr/DELTR_PROJECT_SPEC.md).
 
 2. **Technical Architecture Guidelines:**
-   - **Binance Agent OS:** Integrate Binance Agent OS framework in `agents/agent_os_bridge.ts`.
-   - **Binance MCP Server Suite:** Use MCP JSON-RPC tools for orderbook and account inspection.
-   - **Deterministic Risk Gate:** Enforce leverage and risk bounds in `risk_gate.py`.
+   - **Binance Agent OS:** There is no Agent OS SDK. Agent OS is the hosted Binance MCP server (`https://agent.binance.com/mcp/agentic`, OAuth via a supported host), the Skills Hub, the Agentic Wallet and the APIs. `agents/agent_os_bridge.ts` is an MCP client that connects to Deltr's own MCP server and discovers the Binance MCP upstream (official, then local shim, then none) and reports truthfully which one it reached.
+   - **Binance MCP Server:** Binance publishes no tool names; the bridge discovers them at runtime (`tools/list`) once a host has authorised it. The official endpoint was not exercised from the build machine (DNS-blocked, OAuth). Deltr exposes its own 17 MCP tools for Claude Code / Claude Desktop / Codex / Cursor.
+   - **Deterministic Risk Gate:** Enforce leverage and risk bounds in `risk_gate.py` (19 ordered checks, zero LLM, measured median quoted at startup). Every order passes it. Modes are PAPER and Binance Futures TESTNET only; there is no live mode.
+   - **Honesty rules:** funding figures are testnet-derived and indicative; latency is quoted as measured; USDC in prompts is treated as USDT-equivalent for sizing; no "risk-free" or "guaranteed" wording anywhere.
 
 3. **Submission Requirements Checklist:**
    - Public GitHub repository under Apache 2.0 / MIT License.
