@@ -478,7 +478,7 @@ def render_edge_report(
             step = max(1, len(pts) // curve_rows)
             kept = pts[::step][:curve_rows]
             if kept and kept[-1].horizon_h != pts[-1].horizon_h:
-                kept[-1] = pts[-1]
+                kept.append(pts[-1])  # always show where the range ends
             pts = kept
         for p in pts:
             out.append(
