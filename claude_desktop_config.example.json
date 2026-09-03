@@ -1,0 +1,29 @@
+{
+  "_comment": "Claude Desktop (Settings > Developer > Edit Config). Use EXACTLY ONE of `deltr` (mcp-remote to the running `python main.py` on :8000, recommended: the dashboard shows what Claude does) or `deltr-stdio-alternative` (runs the whole engine inside Claude Desktop; do not run it alongside a separate `python main.py`). `binance-shim` is the optional local Binance-shaped shim (testnet only, keyless market tools). Replace /ABSOLUTE/PATH/Deltr with your clone path (e.g. the output of `pwd`).",
+  "mcpServers": {
+    "deltr": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://127.0.0.1:8000/mcp"
+      ]
+    },
+    "deltr-stdio-alternative": {
+      "command": "/ABSOLUTE/PATH/Deltr/.venv/bin/python",
+      "args": [
+        "/ABSOLUTE/PATH/Deltr/main.py",
+        "--mcp"
+      ],
+      "cwd": "/ABSOLUTE/PATH/Deltr"
+    },
+    "binance-shim": {
+      "command": "/ABSOLUTE/PATH/Deltr/.venv/bin/python",
+      "args": [
+        "-m",
+        "deltr.mcp.binance_shim_server"
+      ],
+      "cwd": "/ABSOLUTE/PATH/Deltr"
+    }
+  }
+}
