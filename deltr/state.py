@@ -226,6 +226,16 @@ class State:
             leg_order=s.leg_order,
             limits=dict(limits),
             check_order=[str(c) for c in check_order],
+            execution_style=(None if s.mode.value == "paper" else s.execution_style.value),
+            execution_style_label=s.execution_style_label,
+            data_source=s.data_source_label,
+            # real_funds_armed is asserted by the engine only after live_preflight() passed;
+            # settings alone can say "configured for LIVE", never "armed".
+            real_funds_armed=False,
+            onchain_armed=s.onchain_arming_error() is None,
+            wallet_address=None,
+            max_notional_usd=float(s.max_notional_usd),
+            max_aggregate_usd=(None if s.max_aggregate_usd == float("inf") else float(s.max_aggregate_usd)),
         )
 
     def snapshot(self, gate_snapshot: Optional[dict[str, Any]] = None) -> Snapshot:

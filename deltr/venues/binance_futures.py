@@ -1,5 +1,11 @@
 """
-Binance USDⓈ-M Futures REST client (public + HMAC-SHA256 signed), testnet only.
+Binance USDⓈ-M Futures REST client (public + HMAC-SHA256 signed).
+
+Signing against **mainnet** (``fapi.binance.com``) is possible but never accidental: it
+takes ``allow_mainnet_orders=True``, which only ``LiveRouter``'s caller passes and only
+after the full LIVE opt-in has been checked.  Everything else behaves as before: a
+keyless instance reaches public endpoints only, and credentials against any other
+non-testnet host are still refused outright.
 
 Design (DESIGN_FINAL 3.8 / 4.4):
 
@@ -35,7 +41,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import ROUND_DOWN, Decimal
 from typing import Any, Mapping, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 
@@ -71,6 +77,8 @@ ERROR_MAP: dict[int, tuple[bool, str]] = {
     -4046: (False, "margin type unchanged (no need to change)"),
     -4061: (True, "positionSide mismatch with account mode — re-read dual-side and retry once"),
     -4164: (False, "order notional below the 5 USDT minimum"),
+    -5021: (False, "post-only (GTX) order would have crossed the spread and was not placed"),
+    -5022: (False, "post-only (GTX) order would have crossed the spread and was not placed"),
 }
 
 
@@ -192,6 +200,11 @@ def parse_premium_index(raw: Mapping[str, Any], interval_h: int = DEFAULT_FUNDIN
     )
 
 
+MAINNET_ORDER_HOST = "fapi.binance.com"
+# The exchange refused to rest a post-only order because it would have taken liquidity.
+POST_ONLY_REJECT_CODES = (-5021, -5022, -2010)
+
+
 class FuturesClient:
     """USDⓈ-M Futures REST client. Keyless instances can only reach public endpoints."""
 
@@ -202,14 +215,30 @@ class FuturesClient:
         api_key: Optional[str] = None,
         secret_key: Optional[str] = None,
         recv_window_ms: int = 5000,
+        *,
+        allow_mainnet_orders: bool = False,
     ) -> None:
         if not base_url:
             raise ValueError("base_url is required")
-        if (api_key or secret_key) and "testnet" not in base_url.lower():
-            raise ValueError("FuturesClient refuses credentials unless base_url contains 'testnet' (never signs against production)")
+        if api_key or secret_key:
+            host = (urlsplit(base_url if "://" in base_url else f"https://{base_url}").hostname or "").lower()
+            # the HOSTNAME, never the whole URL: "https://fapi.binance.com/testnet" contains the
+            # word and would otherwise have bought a credentialed client on the mainnet host
+            if "testnet" not in host:
+                if not allow_mainnet_orders:
+                    raise ValueError(
+                        "FuturesClient refuses credentials unless base_url contains 'testnet'. "
+                        "Signing against mainnet needs allow_mainnet_orders=True, which only the LIVE "
+                        "path passes and only after the full LIVE opt-in has been checked."
+                    )
+                if host != MAINNET_ORDER_HOST:
+                    raise ValueError(
+                        f"allow_mainnet_orders only permits {MAINNET_ORDER_HOST}; refusing to sign against {host!r}."
+                    )
         if bool(api_key) != bool(secret_key):
             raise ValueError("api_key and secret_key must be given together")
         self.http = http
+        self.allow_mainnet_orders = bool(allow_mainnet_orders)
         self.base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._secret = secret_key.encode("utf-8") if secret_key else None
@@ -441,6 +470,43 @@ class FuturesClient:
         log.info("IOC %s %s %s @ %s -> %s filled %s", params["side"], params["quantity"], symbol, params["price"], result.status, result.executed_qty)
         return result
 
+    def maker_params(
+        self, symbol: str, side: Side, qty: float, price: float, client_id: str,
+        reduce_only: bool = False, position_side: str = "BOTH",
+    ) -> dict[str, Any]:
+        """Unsigned parameter set for a POST-ONLY (``timeInForce=GTX``) LIMIT order.
+
+        GTX is the exchange's own guarantee: if the order would take liquidity it is rejected
+        (-5021/-5022) rather than crossing the spread.  Deltr never has to trust its own price
+        arithmetic to stay a maker.
+        """
+        params = self.ioc_params(symbol, side, qty, price, client_id, reduce_only, position_side)
+        params["timeInForce"] = "GTX"
+        return params
+
+    async def place_limit_maker(
+        self, symbol: str, side: Side, qty: float, price: float, client_id: str,
+        reduce_only: bool = False, position_side: str = "BOTH",
+    ) -> OrderResult:
+        """Post-only LIMIT order.  Raises FuturesError(-5022) when the exchange refused to
+        rest it because it would have crossed; the caller re-prices rather than crossing."""
+        params = self.maker_params(symbol, side, qty, price, client_id, reduce_only, position_side)
+        raw = await self._request("POST", "/fapi/v1/order", params, signed=True)
+        result = parse_order(raw)
+        log.info("GTX %s %s %s @ %s -> %s filled %s", params["side"], params["quantity"], symbol, params["price"], result.status, result.executed_qty)
+        return result
+
+    async def cancel_order_by_client_id(self, symbol: str, client_id: str) -> OrderResult | None:
+        """Cancel a resting order.  Returns the cancelled order (so the caller can read the
+        partial ``executedQty``), or None when it was already gone."""
+        try:
+            raw = await self._request("DELETE", "/fapi/v1/order", {"symbol": symbol, "origClientOrderId": client_id}, signed=True)
+        except FuturesError as e:
+            if e.code in (-2011, -2013):
+                return None
+            raise
+        return parse_order(raw)
+
     async def get_order_by_client_id(self, symbol: str, client_id: str) -> OrderResult | None:
         try:
             raw = await self._request("GET", "/fapi/v1/order", {"symbol": symbol, "origClientOrderId": client_id}, signed=True)
@@ -470,6 +536,6 @@ class FuturesClient:
 
 
 __all__ = [
-    "ERROR_MAP", "CLIENT_ID_RE", "TRANSPORT_ERROR_CODE", "FuturesError", "FuturesTimeout", "OrderResult", "AccountPrep",
+    "ERROR_MAP", "CLIENT_ID_RE", "TRANSPORT_ERROR_CODE", "MAINNET_ORDER_HOST", "POST_ONLY_REJECT_CODES", "FuturesError", "FuturesTimeout", "OrderResult", "AccountPrep",
     "FuturesClient", "redact", "fmt_decimal", "parse_order", "parse_symbol_filters", "parse_premium_index",
 ]

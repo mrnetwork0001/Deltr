@@ -13,8 +13,10 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from deltr.funding_history import DEFAULT_LOOKBACK_DAYS, render_funding_report
 from deltr.horizon import horizon_analysis
 from deltr.mcp.activity import redact_urls
 from deltr.models import StressScenario, TraceSource, UpstreamStatus
@@ -22,6 +24,15 @@ from deltr.models import StressScenario, TraceSource, UpstreamStatus
 router = APIRouter()
 
 RECEIPT_ERROR_STATUS = {"PLAN_NOT_FOUND": 404, "PLAN_EXPIRED": 410, "CONFIRM_REQUIRED": 409, "POSITION_NOT_FOUND": 404}
+
+# On-chain / x402 refusals carry their own code; these are the HTTP statuses they map to.
+ONCHAIN_ERROR_STATUS = {
+    "CONFIRM_REQUIRED": 409, "ONCHAIN_NOT_ARMED": 409, "KILL_SWITCH": 409, "HALTED_DRAWDOWN": 409,
+    "MAX_NOTIONAL": 409, "AGGREGATE_NOTIONAL": 409, "CHAIN_NOT_ALLOWED": 400, "INVALID_ARGUMENT": 400,
+    "SWAP_PREVIEW_REJECTED": 409, "SWAP_UNCONFIRMED": 409, "SECRET_IN_ARGV": 500,
+    "BAW_NOT_INSTALLED": 503, "BAW_NOT_SIGNED_IN": 401, "BAW_TIMEOUT": 504, "BAW_BAD_JSON": 502,
+    "BAW_CLI_ERROR": 502, "BAD_PAYMENT_REQUIRED": 400, "X402_NO_PAY_TO": 409,
+}
 
 
 class ApiError(Exception):
@@ -72,6 +83,23 @@ class ResetHaltBody(BaseModel):
     reason: str = Field(min_length=3)
 
 
+class OnchainSwapBody(BaseModel):
+    from_token: str = Field(min_length=4, description="Source token contract address")
+    to_token: str = Field(min_length=4, description="Destination token contract address")
+    amount: float = Field(gt=0)
+    notional_usd: float = Field(gt=0, description="USD notional, checked against Deltr's on-chain caps")
+    confirm: bool = False
+    chain_id: Optional[int] = None
+    slippage_pct: Optional[float] = Field(default=None, gt=0, le=50)
+    min_receive: Optional[float] = Field(default=None, gt=0)
+
+
+class X402PayBody(BaseModel):
+    payment_required: str = Field(min_length=2, description="402 body as JSON, or the base64 PAYMENT-REQUIRED header value")
+    selected_index: Optional[int] = Field(default=None, ge=0)
+    confirm: bool = False
+
+
 class MinEdgeBody(BaseModel):
     min_edge_bps: float = Field(ge=-50, le=50)
 
@@ -118,6 +146,17 @@ def _horizon(eng: Any, ms: Any, edge: Any, assumed_funding_rate: Optional[float]
         measured_source=getattr(getattr(funding, "source", None), "value", None),
         assumed_rate=assumed_funding_rate,
     )
+
+
+def _onchain_error(exc: Exception) -> ApiError:
+    """Any wallet / payment failure that carries its own ``code`` becomes the JSON envelope."""
+    code = str(getattr(exc, "code", "") or "INTERNAL_ERROR")
+    message = str(getattr(exc, "message", "") or exc) or code
+    extra: dict[str, Any] = {}
+    remedy = getattr(exc, "remedy", None)
+    if remedy:
+        extra["remedy"] = str(remedy)
+    return ApiError(ONCHAIN_ERROR_STATUS.get(code, 400), code, message, **extra)
 
 
 def _receipt_payload(receipt: Any) -> dict[str, Any]:
@@ -170,6 +209,38 @@ def market(
         "components": _json(edge.components()) if edge is not None else [],
         "horizon": _json(_horizon(eng, ms, edge, assumed_funding_rate)) if edge is not None else None,
     }
+
+
+@router.get("/funding/history")
+async def funding_history(
+    request: Request,
+    symbol: Optional[str] = None,
+    lookback_days: float = Query(default=DEFAULT_LOOKBACK_DAYS, ge=1, le=2000),
+    holds_days: Optional[str] = Query(
+        default=None, description="Comma-separated holding periods in days, e.g. 3,7,14,30", max_length=120
+    ),
+    refresh: bool = False,
+    markdown: bool = Query(default=False, description="Also render the analysis as a markdown report"),
+) -> Any:
+    """Real mainnet funding history and the carry analysis built on it (read-only, keyless, cached)."""
+    eng = _engine(request)
+    holds: Optional[list[float]] = None
+    if holds_days:
+        try:
+            holds = [float(x) for x in holds_days.split(",") if x.strip()]
+        except ValueError as exc:
+            raise ApiError(400, "INVALID_ARGUMENT", f"holds_days must be a comma-separated list of numbers: {exc}") from exc
+    try:
+        analysis = await eng.funding_history(symbol, lookback_days=lookback_days, holds_days=holds, refresh=refresh)
+    except ValueError as exc:
+        raise ApiError(400, "INVALID_ARGUMENT", str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - upstream market-data failure, reported with its hint
+        raise ApiError(502, "UPSTREAM_UNAVAILABLE", str(exc)) from exc
+    payload = analysis.as_dict()
+    if markdown:
+        payload["format"] = "markdown"
+        payload["markdown"] = render_funding_report(analysis)
+    return payload
 
 
 @router.get("/opportunities")
@@ -291,4 +362,68 @@ def min_edge(request: Request, body: MinEdgeBody) -> Any:
     return {"min_edge_bps": float(effective), "floor_bps": float(floor), "mode": eng.settings.mode.value}
 
 
-__all__ = ["router", "ApiError", "RECEIPT_ERROR_STATUS"]
+# --------------------------------------------------------------------------- on-chain leg + x402
+@router.get("/wallet/status")
+async def wallet_status(request: Request) -> Any:
+    """Read-only status of the Binance Agentic Wallet leg.  Deltr holds no key and signs nothing:
+    the wallet custodies the key, applies its own daily limits and performs the signing."""
+    return await _engine(request).wallet_status()
+
+
+@router.post("/onchain/swap")
+async def onchain_swap(request: Request, body: OnchainSwapBody) -> Any:
+    """Request an on-chain swap through the agentic wallet.  Behind the deterministic pre-flight
+    (kill switch, drawdown halt, arming, chain, per-request and aggregate caps, confirm)."""
+    try:
+        return await _engine(request).onchain_swap(
+            from_token=body.from_token, to_token=body.to_token, amount=body.amount,
+            notional_usd=body.notional_usd, confirm=body.confirm, chain_id=body.chain_id,
+            slippage=body.slippage_pct, min_receive=body.min_receive,
+        )
+    except Exception as exc:  # noqa: BLE001 - refusals and CLI failures become the JSON envelope
+        if not hasattr(exc, "code"):
+            raise
+        raise _onchain_error(exc) from exc
+
+
+@router.post("/x402/pay")
+async def x402_pay(request: Request, body: X402PayBody) -> Any:
+    """BUYER side: pay an HTTP 402 (x402 / B402) challenge on BNB Smart Chain through the wallet."""
+    try:
+        return await _engine(request).x402_pay(
+            body.payment_required, selected_index=body.selected_index, confirm=body.confirm
+        )
+    except Exception as exc:  # noqa: BLE001
+        if not hasattr(exc, "code"):
+            raise
+        raise _onchain_error(exc) from exc
+
+
+@router.get("/x402/edge-report")
+def x402_edge_report(
+    request: Request,
+    capital_usd: Optional[float] = Query(default=None, gt=0),
+    leverage: float = Query(default=2.0, gt=0, le=3),
+    horizon_h: float = Query(default=24.0, gt=0, le=720),
+    preview: bool = Query(default=False, description="Return the challenge as a 200 body instead of a real 402"),
+) -> Any:
+    """SELLER side: answer with a well-formed x402 (B402) challenge on BNB Smart Chain whose paid
+    artifact is Deltr's existing edge report, sealed with the same sha256 Deltr seals receipts with.
+
+    The report itself is not included: only its title, size and digest, so a buyer knows what they
+    are paying for.  No settlement is claimed and no mainnet B402 application was made.
+    """
+    eng = _engine(request)
+    try:
+        challenge = eng.x402_edge_report_challenge(capital_usd=capital_usd, leverage=leverage, horizon_h=horizon_h)
+    except Exception as exc:  # noqa: BLE001
+        if not hasattr(exc, "code"):
+            raise
+        raise _onchain_error(exc) from exc
+    if preview:
+        return challenge
+    headers = {k: v for k, v in dict(challenge["headers"]).items() if k.lower() != "content-type"}
+    return JSONResponse(status_code=402, content=challenge["body"], headers=headers)
+
+
+__all__ = ["router", "ApiError", "RECEIPT_ERROR_STATUS", "ONCHAIN_ERROR_STATUS"]
