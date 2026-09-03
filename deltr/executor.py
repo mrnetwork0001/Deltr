@@ -14,8 +14,13 @@ stop monitor — goes through ``Executor.execute`` / ``Executor.unwind``:
   never left silently (receipt ``failed`` + error event);
 * every outcome is a sealed ``ExecutionReceipt`` with ordered ``steps[]``.
 
-Routers: ``PaperRouter`` (no credentials, simulated fills on live prices) and
-``TestnetRouter`` (real USDⓈ-M testnet perp leg via LIMIT IOC; DEX leg simulated).
+Routers: ``PaperRouter`` (no credentials, simulated fills on live prices),
+``TestnetRouter`` (real USDⓈ-M **testnet** perp leg via LIMIT IOC; DEX leg simulated) and
+``LiveRouter`` (**real money**: mainnet perp leg posted as a maker, plus a real on-chain leg
+executed by the Binance Agentic Wallet, which holds the key and does the signing).
+
+The gate sits in front of all three identically.  Adding LiveRouter added no path around it:
+``_execute_locked`` re-prices, re-gates and only then calls ``router.fill``.
 """
 from __future__ import annotations
 
@@ -27,7 +32,9 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any, List, Optional, Protocol, Tuple
 
-from deltr.config import LegOrder, Mode, Settings
+from urllib.parse import urlsplit
+
+from deltr.config import ExecutionStyle, LegOrder, Mode, Settings
 from deltr.edge import floor_to_step, net_edge, perp_reference, round_to_tick, size_for_capital
 from deltr.models import (
     DataSource,
@@ -50,7 +57,10 @@ from deltr.models import (
     Venue,
     utcnow,
 )
+from deltr.maker import MakerError, MakerExecution
+from deltr.onchain_leg import OnchainLegError
 from deltr.receipts import make_receipt
+from deltr.venues.binance_futures import MAINNET_ORDER_HOST
 
 log = logging.getLogger("deltr.executor")
 
@@ -63,15 +73,25 @@ _FATAL_FUTURES_CODES = {-1111, -2019, -4164, -4028, -2022}
 
 
 class LegError(Exception):
-    """A leg could not be filled (zero fill after retries, venue error, simulated failure)."""
+    """A leg could not be filled (zero fill after retries, venue error, simulated failure).
 
-    def __init__(self, reason: str, *, leg_index: int = -1, venue: Optional[Venue] = None, retryable: bool = False, code: Optional[int] = None) -> None:
+    ``submitted`` is the load-bearing field for real money: True means an order or a
+    transaction was ALREADY sent to the venue and its outcome is not known.  A failure with
+    ``submitted=True`` must never be reported as "nothing happened, nothing to reverse" —
+    there may be a real position or a real transaction out there.  ``filled_qty`` carries a
+    venue-confirmed partial that came with the failure, for the same reason.
+    """
+
+    def __init__(self, reason: str, *, leg_index: int = -1, venue: Optional[Venue] = None, retryable: bool = False,
+                 code: Optional[int] = None, submitted: bool = False, filled_qty: float = 0.0) -> None:
         super().__init__(reason)
         self.reason = reason
         self.leg_index = leg_index
         self.venue = venue
         self.retryable = retryable
         self.code = code
+        self.submitted = bool(submitted)
+        self.filled_qty = float(filled_qty)
 
 
 class PositionNotFound(KeyError):
@@ -227,8 +247,135 @@ class PaperRouter:
         return f.model_copy(update={"ref": "paper:reverse_partial"})
 
 
+# --------------------------------------------------------------------------- shared perp machinery
+class _PerpLegRouter:
+    """LIMIT-order machinery shared by the two routers that reach a real venue.
+
+    It holds no host policy of its own on purpose: TestnetRouter and LiveRouter each assert
+    their own host in their own constructor, so inheriting this class never inherits a
+    permission.  ``perp_source`` tags every Fill with the venue that actually answered.
+    """
+
+    mode: Mode
+    perp_source: DataSource = DataSource.BINANCE_FUTURES_TESTNET
+    max_attempts: int = 3
+    backoff_ms: Tuple[int, int, int] = (200, 400, 800)
+    futures: Any
+    settings: Settings
+    filters: SymbolFilters
+    _prep: Any
+
+    def ioc_bands(self) -> Tuple[float, float]:
+        """(first, retry) crossing bands in bps for a taker LIMIT IOC order."""
+        return (self.settings.testnet_ioc_band_bps, self.settings.testnet_ioc_retry_band_bps)
+
+    def _side_params(self, leg: OrderLeg) -> Tuple[bool, str]:
+        """(reduce_only, position_side) for the account's position mode."""
+        prep = self._prep
+        if prep is not None and getattr(prep, "dual_side", False):
+            return False, "SHORT"  # hedge mode: reduceOnly is rejected; SHORT on open SELL and closing BUY
+        return bool(leg.reduce_only), "BOTH"
+
+    def _limit_price(self, side: Side, mark: float, band_bps: float) -> float:
+        tick = self.filters.tick_size
+        if side == Side.SELL:
+            return round_to_tick(mark * (1.0 - band_bps / 1e4), tick)
+        return round_to_tick(mark * (1.0 + band_bps / 1e4), tick) + tick
+
+    async def _fill_perp(self, leg: OrderLeg, ms: MarketState, qty: Optional[float], plan_id: str, attempt: int, leg_code: int) -> Fill:
+        mark = perp_mark(ms)
+        if mark is None or mark <= 0:
+            raise LegError("no perp mark price", leg_index=PERP_LEG, venue=leg.venue, retryable=True)
+        q = floor_to_step(float(qty if qty is not None else leg.qty), self.filters.step_size)
+        if q < self.filters.min_qty:
+            raise LegError(f"qty {q} below min_qty {self.filters.min_qty}", leg_index=PERP_LEG, venue=leg.venue)
+        reduce_only, position_side = self._side_params(leg)
+        bands = self.ioc_bands()
+        attempt_no = attempt
+        last_reason = "zero fill"
+        t0 = time.perf_counter()
+        for i in range(self.max_attempts):
+            band = bands[min(i, 1)]
+            price = self._limit_price(leg.side, mark, band)
+            cid = client_order_id(plan_id, leg_code, attempt_no)
+            res = None
+            try:
+                res = await self.futures.place_limit_ioc(leg.symbol, leg.side, q, price, cid, reduce_only=reduce_only, position_side=position_side)
+            except Exception as exc:
+                code = getattr(exc, "code", None)
+                if code in _FATAL_FUTURES_CODES:
+                    raise LegError(f"futures error {code}: {exc}", leg_index=PERP_LEG, venue=leg.venue, retryable=False, code=code) from exc
+                if code == -1021:
+                    log.warning("%s: timestamp out of recvWindow; resyncing time", self.mode.value)
+                    await self._maybe(self.futures.sync_time)
+                elif code == -4061:
+                    log.warning("%s: positionSide mismatch; re-reading position mode", self.mode.value)
+                    await self._maybe(self.futures.prepare_account, leg.symbol, int(leg.leverage) or 1, _store=True)
+                    reduce_only, position_side = self._side_params(leg)
+                else:
+                    # timeout / unknown → query by client id BEFORE any retry.  The distinction
+                    # that matters with real money is "the venue says this order does not exist"
+                    # (safe to retry) versus "we could not ask" (retrying may DOUBLE the
+                    # position, because the first order may be live and filling).  A lookup that
+                    # itself failed is the second case and must stop here.
+                    try:
+                        res = await self._lookup_strict(leg.symbol, cid)
+                    except Exception as exc2:
+                        raise LegError(
+                            f"order {cid} state is UNKNOWN ({exc}) and the follow-up lookup also failed ({exc2}); "
+                            "refusing to retry because a duplicate order could double the position — "
+                            f"reconcile with GET /fapi/v1/order origClientOrderId={cid}",
+                            leg_index=PERP_LEG, venue=leg.venue, retryable=False, submitted=True,
+                        ) from exc2
+                    if res is None:
+                        log.warning("%s: attempt %d (%s) unknown: %s", self.mode.value, attempt_no, cid, exc)
+                last_reason = f"{code or type(exc).__name__}: {exc}"
+            if res is not None and float(getattr(res, "executed_qty", 0.0)) > 0:
+                executed = floor_to_step(float(res.executed_qty), self.filters.step_size)
+                avg = float(res.avg_price) if float(getattr(res, "avg_price", 0.0)) > 0 else price
+                return Fill(
+                    leg_index=PERP_LEG, venue=leg.venue, symbol=leg.symbol, side=leg.side, qty=executed, price=avg,
+                    fee_usd=executed * avg * self.settings.perp_taker_fee_bps / 1e4, ref=str(res.order_id), simulated=False,
+                    source=self.perp_source, client_id=cid, attempt=attempt_no,
+                    reference_divergence_bps=1e4 * (avg - mark) / mark, latency_ms=int((time.perf_counter() - t0) * 1000),
+                )
+            attempt_no += 1
+            if i < self.max_attempts - 1:
+                await asyncio.sleep(self.backoff_ms[min(i, 2)] / 1000.0)
+        raise LegError(f"perp leg unfilled after {self.max_attempts} attempts ({last_reason})", leg_index=PERP_LEG, venue=leg.venue, retryable=False)
+
+    async def _lookup(self, symbol: str, cid: str) -> Any:
+        try:
+            return await self._lookup_strict(symbol, cid)
+        except Exception as exc:
+            log.warning("%s: order lookup %s failed: %s", self.mode.value, cid, exc)
+            return None
+
+    async def _lookup_strict(self, symbol: str, cid: str) -> Any:
+        """Look an order up, distinguishing "not there" (None) from "could not ask" (raises).
+
+        ``get_order_by_client_id`` already returns None for the venue's own -2013/-2011
+        ("order does not exist"); anything else it raises reaches the caller so a retry
+        decision is never made on a lookup Deltr could not actually perform.
+        """
+        fn = getattr(self.futures, "get_order_by_client_id", None)
+        if not callable(fn):
+            raise RuntimeError("this futures client cannot look an order up by client id")
+        return await fn(symbol, cid)
+
+    async def _maybe(self, fn: Any, *args: Any, _store: bool = False) -> None:
+        if not callable(fn):
+            return
+        try:
+            out = await fn(*args)
+            if _store:
+                self._prep = out
+        except Exception as exc:
+            log.warning("%s: %s failed: %s", self.mode.value, getattr(fn, "__name__", fn), exc)
+
+
 # --------------------------------------------------------------------------- TestnetRouter
-class TestnetRouter:
+class TestnetRouter(_PerpLegRouter):
     """Real USDⓈ-M futures **testnet** perp leg (LIMIT + IOC only); DEX leg simulated.
 
     Requires a FuturesClient whose ``base_url`` contains "testnet" (checked at
@@ -270,93 +417,10 @@ class TestnetRouter:
     async def requote(self, qty: float, ms: Optional[MarketState]) -> Optional[DexQuote]:
         return await self._paper.requote(qty, ms)
 
-    def _side_params(self, leg: OrderLeg) -> Tuple[bool, str]:
-        """(reduce_only, position_side) for the account's position mode."""
-        prep = self._prep
-        if prep is not None and getattr(prep, "dual_side", False):
-            return False, "SHORT"  # hedge mode: reduceOnly is rejected; SHORT on open SELL and closing BUY
-        return bool(leg.reduce_only), "BOTH"
-
-    def _limit_price(self, side: Side, mark: float, band_bps: float) -> float:
-        tick = self.filters.tick_size
-        if side == Side.SELL:
-            return round_to_tick(mark * (1.0 - band_bps / 1e4), tick)
-        return round_to_tick(mark * (1.0 + band_bps / 1e4), tick) + tick
-
     async def fill(self, leg: OrderLeg, ms: MarketState, qty: Optional[float] = None, plan_id: str = "", attempt: int = 1) -> Fill:
         if leg.venue == Venue.PANCAKESWAP_V3:
             return await self._paper.fill(leg, ms, qty=qty, plan_id=plan_id, attempt=attempt)
         return await self._fill_perp(leg, ms, qty, plan_id, attempt, leg_code=PERP_LEG)
-
-    async def _fill_perp(self, leg: OrderLeg, ms: MarketState, qty: Optional[float], plan_id: str, attempt: int, leg_code: int) -> Fill:
-        mark = perp_mark(ms)
-        if mark is None or mark <= 0:
-            raise LegError("no perp mark price", leg_index=PERP_LEG, venue=leg.venue, retryable=True)
-        q = floor_to_step(float(qty if qty is not None else leg.qty), self.filters.step_size)
-        if q < self.filters.min_qty:
-            raise LegError(f"qty {q} below min_qty {self.filters.min_qty}", leg_index=PERP_LEG, venue=leg.venue)
-        reduce_only, position_side = self._side_params(leg)
-        bands = (self.settings.testnet_ioc_band_bps, self.settings.testnet_ioc_retry_band_bps)
-        attempt_no = attempt
-        last_reason = "zero fill"
-        t0 = time.perf_counter()
-        for i in range(self.max_attempts):
-            band = bands[min(i, 1)]
-            price = self._limit_price(leg.side, mark, band)
-            cid = client_order_id(plan_id, leg_code, attempt_no)
-            res = None
-            try:
-                res = await self.futures.place_limit_ioc(leg.symbol, leg.side, q, price, cid, reduce_only=reduce_only, position_side=position_side)
-            except Exception as exc:
-                code = getattr(exc, "code", None)
-                if code in _FATAL_FUTURES_CODES:
-                    raise LegError(f"futures error {code}: {exc}", leg_index=PERP_LEG, venue=leg.venue, retryable=False, code=code) from exc
-                if code == -1021:
-                    log.warning("testnet: timestamp out of recvWindow; resyncing time")
-                    await self._maybe(self.futures.sync_time)
-                elif code == -4061:
-                    log.warning("testnet: positionSide mismatch; re-reading position mode")
-                    await self._maybe(self.futures.prepare_account, leg.symbol, int(leg.leverage) or 1, _store=True)
-                    reduce_only, position_side = self._side_params(leg)
-                else:
-                    # timeout / unknown → query by client id BEFORE any retry
-                    res = await self._lookup(leg.symbol, cid)
-                    if res is None:
-                        log.warning("testnet: attempt %d (%s) unknown: %s", attempt_no, cid, exc)
-                last_reason = f"{code or type(exc).__name__}: {exc}"
-            if res is not None and float(getattr(res, "executed_qty", 0.0)) > 0:
-                executed = floor_to_step(float(res.executed_qty), self.filters.step_size)
-                avg = float(res.avg_price) if float(getattr(res, "avg_price", 0.0)) > 0 else price
-                return Fill(
-                    leg_index=PERP_LEG, venue=leg.venue, symbol=leg.symbol, side=leg.side, qty=executed, price=avg,
-                    fee_usd=executed * avg * self.settings.perp_taker_fee_bps / 1e4, ref=str(res.order_id), simulated=False,
-                    source=DataSource.BINANCE_FUTURES_TESTNET, client_id=cid, attempt=attempt_no,
-                    reference_divergence_bps=1e4 * (avg - mark) / mark, latency_ms=int((time.perf_counter() - t0) * 1000),
-                )
-            attempt_no += 1
-            if i < self.max_attempts - 1:
-                await asyncio.sleep(self.backoff_ms[min(i, 2)] / 1000.0)
-        raise LegError(f"perp leg unfilled after {self.max_attempts} attempts ({last_reason})", leg_index=PERP_LEG, venue=leg.venue, retryable=False)
-
-    async def _lookup(self, symbol: str, cid: str) -> Any:
-        fn = getattr(self.futures, "get_order_by_client_id", None)
-        if not callable(fn):
-            return None
-        try:
-            return await fn(symbol, cid)
-        except Exception as exc:
-            log.warning("testnet: order lookup %s failed: %s", cid, exc)
-            return None
-
-    async def _maybe(self, fn: Any, *args: Any, _store: bool = False) -> None:
-        if not callable(fn):
-            return
-        try:
-            out = await fn(*args)
-            if _store:
-                self._prep = out
-        except Exception as exc:
-            log.warning("testnet: %s failed: %s", getattr(fn, "__name__", fn), exc)
 
     async def reverse(self, fill: Fill, ms: MarketState, plan_id: str) -> Fill:
         if fill.venue == Venue.PANCAKESWAP_V3:
@@ -369,6 +433,183 @@ class TestnetRouter:
             return await self._paper.reverse_partial(leg, residual_qty, ms, plan_id)
         rev = OrderLeg(venue=leg.venue, symbol=leg.symbol, side=_opposite(leg.side), qty=residual_qty, price_hint=leg.price_hint, reduce_only=True)
         return await self._fill_perp(rev, ms, residual_qty, plan_id, 1, leg_code=PERP_LEG + REVERSE_LEG_OFFSET)
+
+
+# --------------------------------------------------------------------------- LiveRouter
+class LiveRouter(_PerpLegRouter):
+    """REAL MONEY.  Mainnet USDⓈ-M perp leg + a real on-chain leg through the Binance Agentic Wallet.
+
+    Perp leg
+        Default ``DELTR_EXECUTION_STYLE=maker``: a post-only (GTX) order worked by
+        :class:`~deltr.maker.MakerExecution`, which never crosses the spread.  This is an
+        economics requirement, not a preference: taken, the measured round trip is about
+        16.6 bps and carry clears it in 3.8% of 7-day windows; posted, about 8.6 bps and
+        36.3% (docs/STRATEGY_EVIDENCE.md).  **An unfilled maker order is a LegError**, so the
+        Executor's reverse-on-failure path runs; it is never a silent skip and there is no
+        fallback that crosses the spread.  ``taker`` is available but must be chosen on purpose.
+
+    On-chain leg
+        Delegated to :class:`~deltr.onchain_leg.WalletDexLeg`.  Deltr holds no key and signs
+        nothing; Binance's wallet custodies the key, applies its own limits and signs.  Because
+        the leg is real, ``reverse`` and ``reverse_partial`` are real opposite swaps, and a
+        reversal that fails leaves a booked naked leg with the kill switch engaged exactly as
+        the Executor already does for the perp side.
+
+    The constructor asserts its own host and credentials.  It inherits no permission from
+    anything: the gate still sits in front of every plan, unchanged.
+    """
+
+    mode = Mode.LIVE
+    perp_source = DataSource.BINANCE_FUTURES_MAINNET
+
+    def __init__(self, futures: Any, onchain: Any, settings: Settings, filters: SymbolFilters,
+                 *, book_ticker: Any = None) -> None:
+        base = str(getattr(futures, "base_url", "") or "")
+        host = urlsplit(base if "://" in base else f"https://{base}").hostname or ""
+        if host != MAINNET_ORDER_HOST:
+            raise AssertionError(f"LiveRouter requires the mainnet futures host {MAINNET_ORDER_HOST}, got {host!r}")
+        if not getattr(futures, "has_credentials", False):
+            raise AssertionError("LiveRouter requires a credentialed futures client: LIVE places real orders")
+        if settings.mode != Mode.LIVE:
+            raise AssertionError(f"LiveRouter refuses to run in {settings.mode.value.upper()} mode")
+        arming = settings.live_arming_error()
+        if arming:
+            raise AssertionError(f"LiveRouter refuses to start: {arming}")
+        if onchain is None:
+            raise AssertionError("LiveRouter requires an on-chain leg: the DEX side of a LIVE hedge is real")
+        self.futures = futures
+        self.onchain = onchain
+        self.settings = settings
+        self.filters = filters
+        self._prep: Any = None
+        self.stress: Any = None   # LIVE ignores simulated-failure stress flags; nothing here is simulated
+        self.maker = MakerExecution(futures, settings, filters, book_ticker=book_ticker)
+
+    @property
+    def is_maker(self) -> bool:
+        return self.settings.execution_style == ExecutionStyle.MAKER
+
+    async def prepare(self, symbol: str, leverage: int) -> Any:
+        self._prep = await self.futures.prepare_account(symbol, leverage)
+        return self._prep
+
+    async def requote(self, qty: float, ms: Optional[MarketState]) -> Optional[DexQuote]:
+        return await self.onchain.requote(qty, ms)
+
+    # ------------------------------------------------------------------ legs
+    async def fill(self, leg: OrderLeg, ms: MarketState, qty: Optional[float] = None, plan_id: str = "", attempt: int = 1) -> Fill:
+        if leg.venue == Venue.PANCAKESWAP_V3:
+            return await self._onchain(self.onchain.fill(leg, ms, qty, plan_id, attempt), DEX_LEG, leg.venue)
+        # A reduce-only perp leg CLOSES an exposure that already exists (an unwind, a stop, a
+        # drawdown halt).  It crosses the spread for exactly the reason ``_reverse_perp`` does:
+        # a post-only close that does not fill inside the maker budget leaves the position open
+        # in a market that is, by construction, moving against it.  Posting is the entry
+        # discipline that makes the economics work; it is not a discipline worth a stop-loss
+        # that cannot execute.
+        if self.is_maker and not leg.reduce_only:
+            return await self._fill_perp_maker(leg, ms, qty, plan_id, attempt, leg_code=PERP_LEG)
+        return await self._fill_perp(leg, ms, qty, plan_id, attempt, leg_code=PERP_LEG)
+
+    async def reverse(self, fill: Fill, ms: MarketState, plan_id: str) -> Fill:
+        if fill.venue == Venue.PANCAKESWAP_V3:
+            return await self._onchain(self.onchain.reverse(fill, ms, plan_id), DEX_LEG, fill.venue)
+        leg = OrderLeg(venue=fill.venue, symbol=fill.symbol, side=_opposite(fill.side), qty=fill.qty, price_hint=fill.price, reduce_only=True)
+        return await self._reverse_perp(leg, fill.qty, ms, plan_id)
+
+    async def reverse_partial(self, leg: OrderLeg, residual_qty: float, ms: MarketState, plan_id: str) -> Fill:
+        if leg.venue == Venue.PANCAKESWAP_V3:
+            return await self._onchain(self.onchain.reverse_partial(leg, residual_qty, ms, plan_id), DEX_LEG, leg.venue)
+        rev = OrderLeg(venue=leg.venue, symbol=leg.symbol, side=_opposite(leg.side), qty=residual_qty, price_hint=leg.price_hint, reduce_only=True)
+        return await self._reverse_perp(rev, residual_qty, ms, plan_id)
+
+    async def _reverse_perp(self, leg: OrderLeg, qty: float, ms: MarketState, plan_id: str) -> Fill:
+        """A reversal is time-critical: it closes an exposure that already exists.
+
+        It crosses the spread (LIMIT IOC) even under MAKER, because a post-only reversal that
+        does not fill leaves the very naked leg the reversal exists to remove.  Paying the taker
+        fee to close an unhedged position is the cheaper of the two outcomes, and the receipt
+        records that the reversal was taken.
+        """
+        return await self._fill_perp(leg, ms, qty, plan_id, 1, leg_code=PERP_LEG + REVERSE_LEG_OFFSET)
+
+    @staticmethod
+    async def _onchain(coro: Any, leg_index: int, venue: Venue) -> Fill:
+        """Every on-chain failure becomes a LegError, carrying whether anything was submitted.
+
+        The broad ``except`` is deliberate.  A refusal raised by the engine's on-chain
+        pre-flight is not an ``OnchainLegError``, and before this it escaped the Executor
+        entirely: the plan was consumed, the cash stayed reserved, and — on the second leg of
+        an unwind — the perp was already closed while the book still said "hedged".  Anything
+        that is not an ``OnchainLegError`` is treated as ``submitted`` unknown-but-possible
+        unless it says otherwise, because assuming nothing happened is the expensive assumption.
+        """
+        try:
+            return await coro
+        except OnchainLegError as exc:
+            raise LegError(
+                f"on-chain leg: {exc.reason}", leg_index=leg_index, venue=venue,
+                retryable=False, code=None, submitted=exc.submitted,
+            ) from exc
+        except LegError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - see the docstring: never let this escape
+            raise LegError(
+                f"on-chain leg failed: {type(exc).__name__}: {exc}", leg_index=leg_index, venue=venue,
+                retryable=False, code=None, submitted=False,
+            ) from exc
+
+    # ------------------------------------------------------------------ maker perp leg
+    async def _fill_perp_maker(self, leg: OrderLeg, ms: MarketState, qty: Optional[float], plan_id: str, attempt: int, leg_code: int) -> Fill:
+        mark = perp_mark(ms)
+        if mark is None or mark <= 0:
+            raise LegError("no perp mark price", leg_index=PERP_LEG, venue=leg.venue, retryable=True)
+        q = floor_to_step(float(qty if qty is not None else leg.qty), self.filters.step_size)
+        if q < self.filters.min_qty:
+            raise LegError(f"qty {q} below min_qty {self.filters.min_qty}", leg_index=PERP_LEG, venue=leg.venue)
+        reduce_only, position_side = self._side_params(leg)
+        cids = [client_order_id(plan_id, leg_code, attempt + i) for i in range(self.settings.maker_reprice_attempts)]
+        t0 = time.perf_counter()
+        try:
+            out = await self.maker.work(
+                leg.symbol, leg.side, q, book=ms.cex_perp_book, client_ids=cids,
+                reduce_only=reduce_only, position_side=position_side,
+            )
+        except MakerError as exc:
+            # MakerError carries any venue-confirmed partial precisely so it is not lost.  A
+            # partial that reached here would be a REAL perp position that Deltr forgot about
+            # while it reversed the other leg, so it is surfaced on the error and handled by
+            # the Executor rather than dropped.
+            raise LegError(f"maker leg: {exc.reason}", leg_index=PERP_LEG, venue=leg.venue, retryable=False,
+                           code=exc.code, submitted=exc.filled_qty > 0, filled_qty=exc.filled_qty) from exc
+        if out.left_working:
+            # The venue never confirmed the cancel, so one of Deltr's own orders may still be
+            # resting on a real book.  Reporting `out.filled_qty` as the leg would hedge against
+            # a quantity that can still grow, so this is a failure with submitted=True: the
+            # Executor books what is known, engages the kill switch and names the order for an
+            # operator to cancel by hand.  Nothing further is posted on top of it.
+            raise LegError(
+                f"maker leg stopped with an UNCONFIRMED cancel: order(s) {', '.join(out.left_working)} may still be "
+                f"resting on {leg.symbol}. {out.filled_qty:g} of {out.requested_qty:g} filled before it stopped. "
+                f"Cancel the order at the venue by hand before trading this symbol again.",
+                leg_index=PERP_LEG, venue=leg.venue, retryable=False,
+                submitted=True, filled_qty=out.filled_qty,
+            )
+        if not out.filled_any:
+            # An unfilled post-only order is a FAILURE.  Deltr does not quietly proceed with one
+            # leg, and it does not cross the spread to rescue the fill: the economics that make
+            # the strategy work at all are the reason the order was posted in the first place.
+            raise LegError(
+                f"maker leg did not fill: {out.reason} after {out.attempts} post(s) in {out.elapsed_ms} ms "
+                f"(post-only, never crossed)", leg_index=PERP_LEG, venue=leg.venue, retryable=False,
+            )
+        fee = out.filled_qty * out.avg_price * self.settings.perp_maker_fee_bps / 1e4
+        return Fill(
+            leg_index=PERP_LEG, venue=leg.venue, symbol=leg.symbol, side=leg.side, qty=out.filled_qty,
+            price=out.avg_price, fee_usd=fee, ref=(out.order_ids[-1] if out.order_ids else ""), simulated=False,
+            source=self.perp_source, client_id=(out.client_ids[-1] if out.client_ids else ""), attempt=out.attempts,
+            reference_divergence_bps=1e4 * (out.avg_price - mark) / mark,
+            latency_ms=int((time.perf_counter() - t0) * 1000),
+        )
 
 
 # --------------------------------------------------------------------------- Executor
@@ -597,9 +838,15 @@ class Executor:
         tr = _Trace()
         mode = self.settings.mode
         peeked = self._peek(plan_id)
-        if mode == Mode.TESTNET and not confirm:
+        if self.settings.real_orders and not confirm:
             plan = peeked or self._placeholder_plan(plan_id)
-            dec = self._synthetic("CONFIRM_REQUIRED", "VETO: TESTNET execution requires confirm=true (plan kept; call again with confirm).", plan_id)
+            what = ("REAL MONEY: a mainnet perp order and an on-chain swap through the Binance Agentic Wallet"
+                    if mode == Mode.LIVE else "a real testnet perp order")
+            dec = self._synthetic(
+                "CONFIRM_REQUIRED",
+                f"VETO: {mode.value.upper()} execution requires confirm=true ({what}); the plan is kept, call again with confirm.",
+                plan_id,
+            )
             tr.add("gate", "veto", dec.reason, code=dec.code)
             return self._finish(plan, dec, [], "vetoed", tr, source, client, level="warn", message=dec.reason)
         status_fn = getattr(self.state, "plan_status", None)
@@ -641,6 +888,12 @@ class Executor:
                observed=decision.observed, limit=decision.limit, checks=[c.model_dump(mode="json") for c in decision.checks])
         if not decision.approved:
             return self._finish(plan, decision, [], "vetoed", tr, source, client, level="warn", message=decision.reason)
+        capped = self._live_aggregate_veto(plan)
+        if capped is not None:
+            # The gate ran first and is unchanged; this LIVE-only ceiling can only ever SUBTRACT
+            # from what the gate approved, never add to it.
+            tr.add("gate", "veto", capped.reason, code=capped.code)
+            return self._finish(plan, capped, [], "vetoed", tr, source, client, level="warn", message=capped.reason)
         try:
             self.portfolio.reserve(plan.cash_required_usd)
         except ValueError as exc:
@@ -649,12 +902,32 @@ class Executor:
             return self._finish(plan, dec, [], "failed", tr, source, client, level="error", message=dec.reason)
 
         dex_leg, perp_leg = self.legs_of(plan)
-        order = [dex_leg, perp_leg] if self.settings.leg_order == LegOrder.DEX_FIRST else [perp_leg, dex_leg]
+        # effective_leg_order, not leg_order: a MAKER perp leg is the uncertain one, and the
+        # uncertain leg goes first so that missing it costs nothing instead of costing a full
+        # on-chain round trip.  See Settings.effective_leg_order.
+        order = [dex_leg, perp_leg] if self.settings.effective_leg_order == LegOrder.DEX_FIRST else [perp_leg, dex_leg]
         fills: List[Fill] = []
         # ---- leg 1
         try:
             fill1 = await self.router.fill(order[0], ms, None, plan.id, 1)
         except LegError as exc:
+            if exc.submitted or exc.filled_qty > 0:
+                # "Nothing to reverse" is only true when nothing was SENT.  A swap the wallet may
+                # have broadcast, or an order whose state the venue would not tell us, is real
+                # money that may now be sitting unhedged.  Say so, keep the cash reserved against
+                # it, and stop new entries until a human has reconciled it.  Deltr does not book a
+                # position it cannot point at a confirmed fill for, and it does not pretend the
+                # trade never happened either.
+                self.gate.set_kill_switch(True)
+                msg = (f"first leg ({order[0].venue.value} {order[0].side.value}) failed AFTER something was sent: "
+                       f"{exc.reason}. An unhedged {order[0].venue.value} exposure may be live and is NOT booked; "
+                       f"kill switch ENGAGED, manual reconciliation required.")
+                tr.add("error", "error", msg, leg=order[0].venue.value, reason=exc.reason, submitted=True,
+                       filled_qty=exc.filled_qty)
+                self._emit("fill", msg, "error", {"plan_id": plan.id, "venue": order[0].venue.value})
+                self._emit("gate", "kill switch ENGAGED: a first leg failed after it was submitted", "error",
+                           {"kill_switch": True, "plan_id": plan.id})
+                return self._finish(plan, decision, [], "failed", tr, source, client, level="error", message=msg)
             self.portfolio.release(plan.cash_required_usd)
             tr.add("error", "error", f"first leg ({order[0].venue.value} {order[0].side.value}) failed: {exc.reason}; nothing to reverse", leg=order[0].venue.value, reason=exc.reason)
             return self._finish(plan, decision, [], "failed", tr, source, client, level="error", message=f"first leg failed: {exc.reason}")
@@ -664,7 +937,19 @@ class Executor:
         try:
             fill2 = await self.router.fill(order[1], ms, fill1.qty, plan.id, 1)
         except LegError as exc:
-            tr.add("error", "error", f"second leg ({order[1].venue.value} {order[1].side.value}) failed: {exc.reason}; reversing first leg", leg=order[1].venue.value, reason=exc.reason)
+            if exc.submitted or exc.filled_qty > 0:
+                # The first leg is definitely open, so reversing it is still right.  But the
+                # second leg may ALSO be live, in which case reversing leg 1 leaves leg 2 naked.
+                # Both facts go on the record and new entries stop until a human has looked.
+                self.gate.set_kill_switch(True)
+                self._emit("gate", f"kill switch ENGAGED: second leg on {order[1].venue.value} failed after it was submitted "
+                                   "and may be live; reversing the first leg anyway", "error",
+                           {"kill_switch": True, "plan_id": plan.id})
+                tr.add("error", "error", f"second leg ({order[1].venue.value} {order[1].side.value}) failed AFTER something was sent: "
+                                         f"{exc.reason}. It may be live and unbooked; kill switch ENGAGED. Reversing the first leg.",
+                       leg=order[1].venue.value, reason=exc.reason, submitted=True)
+            else:
+                tr.add("error", "error", f"second leg ({order[1].venue.value} {order[1].side.value}) failed: {exc.reason}; reversing first leg", leg=order[1].venue.value, reason=exc.reason)
             return await self._reverse_first(plan, decision, fill1, ms, tr, source, client)
         fills.append(fill2)
         tr.add(self._fill_step(fill2), "ok", self._fill_summary(fill2), **self._fill_data(fill2))
@@ -687,6 +972,30 @@ class Executor:
         window = legging_window_ms(fill1, fill2)
         return self._finish(plan, decision, fills, "filled", tr, source, client, position_id=pos.id, residual=pos.delta_base,
                             realized_cost=sum(f.fee_usd for f in fills), legging=window, message=f"filled {pos.perp_qty:g} {pos.symbol}; legging window {window} ms")
+
+    def _live_aggregate_veto(self, plan: HedgePlan) -> Optional[RiskDecisionRecord]:
+        """LIVE-only ceiling on total open notional (``DELTR_LIVE_MAX_AGGREGATE_USD``, default $1000).
+
+        The deterministic gate has already approved the plan; this is an extra, smaller bound the
+        operator can only raise on purpose.  It never approves anything the gate vetoed.
+        """
+        s = self.settings
+        if s.mode != Mode.LIVE or plan.reduce_only:
+            return None
+        cap = float(s.max_aggregate_usd)
+        try:
+            open_notional = sum(float(p.notional_usd) for p in self.portfolio.positions("open"))
+        except Exception:  # noqa: BLE001 - a book we cannot read is not a book we trade against
+            open_notional = float("inf")
+        total = open_notional + float(plan.notional_usd)
+        if total <= cap:
+            return None
+        return self._synthetic(
+            "AGGREGATE_NOTIONAL",
+            f"VETO: LIVE aggregate notional ${total:,.2f} would exceed the ${cap:,.2f} cap "
+            f"(${open_notional:,.2f} already open). Raise DELTR_LIVE_MAX_AGGREGATE_USD deliberately.",
+            plan.id,
+        )
 
     async def _reverse_first(self, plan: HedgePlan, decision: RiskDecisionRecord, fill1: Fill, ms: MarketState, tr: _Trace,
                              source: TraceSource, client: Optional[str]) -> ExecutionReceipt:
@@ -724,8 +1033,13 @@ class Executor:
         plan = self._unwind_plan(pos, ms, source, client, reason)
         tr.add("plan", "ok", f"unwind plan for {pos.id}: perp reduce-only BUY {pos.perp_qty:g} then DEX SELL {pos.dex_qty:g} ({reason})",
                position_id=pos.id, reason=reason, plan_hash=plan.plan_hash)
-        if self.settings.mode == Mode.TESTNET and not confirm and source != TraceSource.AUTO:
-            dec = self._synthetic("CONFIRM_REQUIRED", "VETO: TESTNET unwind requires confirm=true.", plan.id)
+        if self.settings.real_orders and not confirm and source != TraceSource.AUTO:
+            dec = self._synthetic(
+                "CONFIRM_REQUIRED",
+                f"VETO: {self.settings.mode.value.upper()} unwind requires confirm=true"
+                + (" (this closes a real position with real orders)." if self.settings.mode == Mode.LIVE else "."),
+                plan.id,
+            )
             tr.add("gate", "veto", dec.reason, code=dec.code)
             return self._finish(plan, dec, [], "vetoed", tr, source, client, position_id=pos.id, level="warn", message=dec.reason)
         return await self._unwind_with_plan(pos, plan, reason, source, client, tr)
@@ -757,6 +1071,19 @@ class Executor:
             try:
                 perp_fill = await self.router.fill(perp_leg, ms, pos.perp_qty, plan.id, 1)
             except LegError as exc:
+                if exc.submitted or exc.filled_qty > 0:
+                    # "stays OPEN" would be a guess: the close may have gone through.  The book and
+                    # the venue can now disagree about the perp leg, which is the one state that
+                    # must never be quietly assumed.
+                    self.gate.set_kill_switch(True)
+                    msg = (f"perp reduce-only leg failed AFTER something was sent: {exc.reason}. Position {pos.id} may be "
+                           f"PARTLY OR FULLY CLOSED at the venue while the book still shows it open; kill switch ENGAGED, "
+                           f"reconcile the perp position before trading again.")
+                    tr.add("error", "error", msg, reason=exc.reason, submitted=True)
+                    self._emit("position", msg, "error", {"position_id": pos.id})
+                    self._emit("gate", "kill switch ENGAGED: an unwind's perp leg failed after it was submitted", "error",
+                               {"kill_switch": True, "position_id": pos.id})
+                    return self._finish(plan, decision, [], "failed", tr, source, client, position_id=pos.id, level="error", message=msg)
                 tr.add("error", "error", f"perp reduce-only leg failed: {exc.reason}; position {pos.id} stays OPEN", reason=exc.reason)
                 self._emit("position", f"unwind of {pos.id} failed on the perp leg: {exc.reason}", "error", {"position_id": pos.id})
                 return self._finish(plan, decision, [], "failed", tr, source, client, position_id=pos.id, level="error", message=f"perp leg failed: {exc.reason}")
