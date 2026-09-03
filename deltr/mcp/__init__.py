@@ -1,0 +1,1 @@
+"""Deltr — deltr/mcp package."""

@@ -45,6 +45,9 @@ PURPOSE: dict[str, tuple[str, str]] = {
     "deltr_set_min_edge": ("runtime minimum net edge (PAPER may go negative, labelled on screen; TESTNET >= floor)", "no"),
     "deltr_stress": ("labelled SIMULATED scenarios on the paper book only; `kind: \"reset\"` clears", "no (paper book only)"),
     "deltr_edge_report": ("the same decomposition rendered as a titled markdown report: waterfall, funding, breakeven verdict, source tags and feed ages, honesty labels", "no"),
+    "deltr_wallet_status": ("the on-chain leg's status: is the Binance Agentic Wallet CLI installed and signed in, its addresses and Binance's own remaining daily quota, Deltr's arming state and caps", "no"),
+    "deltr_onchain_swap": ("request an on-chain swap through the Binance Agentic Wallet (Deltr holds no key); previewed, gated and confirmed, `confirm: true` required", "**yes**"),
+    "deltr_x402_pay": ("pay an HTTP 402 (x402 / B402) challenge on BNB Smart Chain through the wallet: preview, policy, sign; `confirm: true` required", "**yes**"),
 }
 
 

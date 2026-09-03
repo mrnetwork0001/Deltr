@@ -1,0 +1,302 @@
+{
+  "url": "https://agent.binance.com/mcp/agentic",
+  "provenance": {
+    "captured_from_our_own_session": false,
+    "official_endpoint_reached_from_this_machine": false,
+    "official_endpoint": "https://agent.binance.com/mcp/agentic",
+    "method": "transcribed_from_third_party_published_inventory",
+    "source_repo": "likeMdl/binance-ai-risk-trader",
+    "source_url": "https://raw.githubusercontent.com/likeMdl/binance-ai-risk-trader/main/docs/binance-agent-os-tools.md",
+    "source_dated": "2026-09-02",
+    "discovered_on": "2026-09-02",
+    "transcribed_on": "2026-09-03",
+    "statement": "These tool names were transcribed on 2026-09-03 from a third-party published inventory dated 2026-09-02 (likeMdl/binance-ai-risk-trader, docs/binance-agent-os-tools.md), which states that it captured them from a live OAuth session against https://agent.binance.com/mcp/agentic. They were not captured from our own session: Deltr has never reached the official endpoint from this machine, where agent.binance.com does not resolve. The claim is name compatibility with a published inventory, never verification against Binance.",
+    "claim": "name-compatible with a published third-party inventory of the official surface",
+    "not_claimed": [
+      "captured from our own OAuth session",
+      "verified against Binance",
+      "connected to the official Binance MCP server"
+    ],
+    "source_reported_counts": {
+      "tools_total": 50,
+      "market_data": 24,
+      "account_read": 23,
+      "write_capable_trade_tools": 0,
+      "transfer_tools": 0
+    },
+    "observations": [
+      "0 write-capable trade tools visible after OAuth in the source's session",
+      "0 transfer tools visible after OAuth in the source's session",
+      "no funding-rate tool appears anywhere in the inventory, so Deltr's get_funding_rate keeps its local name"
+    ],
+    "confidence_notes": [
+      "the 12 futures_coin.* rows are marked transcription=mirrored_from_futures_usds: the source describes a parallel set without enumerating it",
+      "per-tool category tags are Deltr's own classification; they reproduce the source's reported totals (24 MARKET_DATA, 23 ACCOUNT_READ) but the per-tool assignment was not transcribed"
+    ],
+    "upgrade_path": "run scripts/probe_binance_mcp.py --out tests/fixtures/binance_mcp_tools.json inside a completed OAuth session to replace this file with a first-party capture; the provenance block is then rewritten by the probe and captured_from_our_own_session becomes true"
+  },
+  "tools": [
+    {
+      "name": "spot.ticker24hr",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.depth",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.klines",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.exchangeInfo",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.tickerPrice",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.getAccount",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.getOpenOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.getOrder",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "spot.myTrades",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.accountInformationV3",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.futuresAccountBalanceV3",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.positionInformationV2",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.markPriceKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.premiumIndexKlineData",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.symbolPriceTicker",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.exchangeInformation",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.queryOrder",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.currentAllOpenOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.klineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.indexPriceKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_usds.continuousContractKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "futures_coin.accountInformationV3",
+      "category": "ACCOUNT_READ",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.futuresAccountBalanceV3",
+      "category": "ACCOUNT_READ",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.positionInformationV2",
+      "category": "ACCOUNT_READ",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.markPriceKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.premiumIndexKlineData",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.symbolPriceTicker",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.exchangeInformation",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.queryOrder",
+      "category": "ACCOUNT_READ",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.currentAllOpenOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.klineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.indexPriceKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "futures_coin.continuousContractKlineCandlestickData",
+      "category": "MARKET_DATA",
+      "transcription": "mirrored_from_futures_usds",
+      "note": "the source describes a parallel futures_coin.* set without enumerating it; these 12 names mirror the USDS-M operation names and are the least-confident rows in this file"
+    },
+    {
+      "name": "margin.queryCrossMarginAccountDetails",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.queryMaxBorrow",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.getAllMarginAssets",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.crossMarginCollateralRatio",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.getAllIsolatedMarginSymbol",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.queryMarginAccountsAllOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.queryMarginAccountsOpenOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.queryMarginAccountsOrder",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "margin.queryMarginAccountsTradeList",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "convert.listAllConvertPairs",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "convert.queryOrderQuantityPrecisionPerAsset",
+      "category": "MARKET_DATA",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "convert.orderStatus",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "convert.queryLimitOpenOrders",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "convert.getConvertTradeHistory",
+      "category": "ACCOUNT_READ",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "analysis.getTokenAiReport",
+      "category": "ANALYSIS",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "tool_search",
+      "category": "GATEWAY",
+      "transcription": "verbatim"
+    },
+    {
+      "name": "tool_execute",
+      "category": "GATEWAY",
+      "transcription": "verbatim"
+    }
+  ]
+}
