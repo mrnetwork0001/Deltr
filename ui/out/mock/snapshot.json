@@ -1,0 +1,2719 @@
+{
+ "status": {
+  "mode": "paper",
+  "symbol": "BNBUSDT",
+  "version": "1.0.0",
+  "uptime_s": 1842,
+  "started_at": "2026-09-02T14:01:28Z",
+  "halted": false,
+  "kill_switch": false,
+  "dd_state": "NORMAL",
+  "equity_usd": 9994.6,
+  "drawdown_pct": 0.054,
+  "open_positions": 1,
+  "venues": [
+   {
+    "name": "pancakeswap_v3",
+    "ok": true,
+    "age_ms": 2870,
+    "source": "bsc-mainnet-chain",
+    "detail": "QuoterV2 block 58812441"
+   },
+   {
+    "name": "binance_futures_testnet",
+    "ok": true,
+    "age_ms": 412,
+    "source": "binance-futures-testnet",
+    "detail": "premiumIndex + bookTicker"
+   },
+   {
+    "name": "binance_spot_mirror",
+    "ok": true,
+    "age_ms": 655,
+    "source": "binance-spot-mirror",
+    "detail": "data-api.binance.vision"
+   }
+  ],
+  "upstream": {
+   "kind": "shim",
+   "url": "stdio:.venv/bin/python -m deltr.mcp.binance_shim_server",
+   "authorized": true,
+   "tools_discovered": [
+    "spot.ticker24hr",
+    "spot.depth",
+    "futures_usds.premiumIndexKlineData",
+    "get_funding_rate",
+    "futures_usds.exchangeInformation",
+    "futures_usds.futuresAccountBalanceV3",
+    "futures_usds.positionInformationV2",
+    "set_leverage",
+    "place_futures_order"
+   ],
+   "error": "official upstream unavailable: fetch failed (getaddrinfo ENOTFOUND agent.binance.com)",
+   "ts": "2026-09-02T14:02:10Z"
+  },
+  "secrets_present": false,
+  "binance_api_env": "testnet",
+  "replay": false,
+  "stress_active": null,
+  "gate_median_us": 1.68,
+  "min_edge_bps": -20.0,
+  "min_edge_floor_bps": 0.0,
+  "leg_order": "dex_first",
+  "limits": {
+   "max_leverage": 3.0,
+   "max_capital_risk_pct": 0.02,
+   "max_drawdown_pct": 0.03,
+   "warn_drawdown_pct": 0.02,
+   "max_capital_utilization": 0.9,
+   "max_notional_usd": 50000.0,
+   "min_notional_usd": 5.0,
+   "hedge_qty_tolerance": 0.005,
+   "max_open_positions": 5,
+   "max_quote_age_ms": 5000.0,
+   "max_price_drift_bps": 20.0,
+   "price_sanity_bps": 100.0,
+   "min_expected_edge_bps": -20.0,
+   "basis_shock_bps": 100.0,
+   "default_roundtrip_cost_bps": 20.0,
+   "allowed_symbols": [
+    "BNBUSDT"
+   ]
+  },
+  "check_order": [
+   "KILL_SWITCH",
+   "HALTED_DRAWDOWN",
+   "MALFORMED",
+   "REDUCE_ONLY_UNVERIFIED",
+   "NOT_DELTA_NEUTRAL",
+   "HEDGE_MISMATCH",
+   "LEVERAGE",
+   "MIN_NOTIONAL",
+   "MAX_NOTIONAL",
+   "CAPITAL_RISK",
+   "AGGREGATE_RISK",
+   "CAPITAL_CAPACITY",
+   "AGGREGATE_NOTIONAL",
+   "SYMBOL_NOT_ALLOWED",
+   "MAX_POSITIONS",
+   "STALE_QUOTE",
+   "PRICE_SANITY",
+   "PRICE_DRIFT",
+   "NEGATIVE_EDGE"
+  ]
+ },
+ "market": {
+  "symbol": "BNBUSDT",
+  "dex": {
+   "pool": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+   "fee_tier": 100,
+   "fee_bps": 1.0,
+   "sqrt_price_x96": 2062889314186423480604836134,
+   "tick": 65282,
+   "mid_price": 686.12,
+   "size_base": 4.85,
+   "exec_price_buy": 686.19,
+   "amount_in_usdt": 3328.0215,
+   "exec_price_sell": 686.03,
+   "amount_out_usdt": 3327.2455,
+   "impact_bps": 0.3,
+   "gas_units": 150000,
+   "gas_price_wei": 1000000000,
+   "gas_usd": 0.103,
+   "block": 58812441,
+   "ts": "2026-09-02T14:32:07.130000Z",
+   "source": "bsc-mainnet-chain"
+  },
+  "cex_perp_book": {
+   "venue": "binance_futures",
+   "symbol": "BNBUSDT",
+   "bid": 686.3,
+   "ask": 686.4,
+   "bid_qty": 12.4,
+   "ask_qty": 9.8,
+   "ts": "2026-09-02T14:32:09.590000Z",
+   "source": "binance-futures-testnet",
+   "mid": 686.3499999999999
+  },
+  "cex_spot_ref": {
+   "venue": "binance_spot",
+   "symbol": "BNBUSDT",
+   "bid": 686.2,
+   "ask": 686.21,
+   "bid_qty": 31.2,
+   "ask_qty": 27.5,
+   "ts": "2026-09-02T14:32:09.350000Z",
+   "source": "binance-spot-mirror",
+   "mid": 686.205
+  },
+  "funding": {
+   "symbol": "BNBUSDT",
+   "mark_price": 686.34,
+   "index_price": 686.28,
+   "last_funding_rate": 0.0001,
+   "next_funding_time_ms": 1788364800000,
+   "interval_h": 8,
+   "annualized_pct": 10.95,
+   "ts": "2026-09-02T14:32:09.590000Z",
+   "source": "binance-futures-testnet"
+  },
+  "perp_ref_price": 686.34,
+  "freshness": {
+   "cex_age_ms": 412,
+   "dex_age_ms": 2870,
+   "spot_age_ms": 655,
+   "ok": true,
+   "reason": null
+  },
+  "ts": "2026-09-02T14:32:09.590000Z",
+  "source": "binance-futures-testnet"
+ },
+ "edge": {
+  "notional_usd": 3328.0,
+  "basis_entry_bps": 2.186,
+  "dex_fee_bps": 1.0,
+  "dex_impact_bps": 0.3,
+  "perp_slip_bps": 1.0,
+  "cex_taker_bps": 5.0,
+  "gas_bps_leg": 1.0,
+  "roundtrip_cost_bps": 16.6,
+  "funding_rate_last": 0.0001,
+  "horizon_h": 72.0,
+  "settlements": 9,
+  "funding_bps_horizon": 9.0,
+  "basis_exit_assumed_bps": 0.0,
+  "basis_shock_bps": 100.0,
+  "net_edge_bps": -5.414,
+  "expected_edge_usd": -1.8,
+  "allocated_risk_usd": 38.8
+ },
+ "opportunity": {
+  "id": "opp_7c1e2a9b40d3",
+  "symbol": "BNBUSDT",
+  "direction": "long_dex_short_perp",
+  "dex_price": 686.19,
+  "perp_price": 686.34,
+  "edge": {
+   "notional_usd": 3328.0,
+   "basis_entry_bps": 2.186,
+   "dex_fee_bps": 1.0,
+   "dex_impact_bps": 0.3,
+   "perp_slip_bps": 1.0,
+   "cex_taker_bps": 5.0,
+   "gas_bps_leg": 1.0,
+   "roundtrip_cost_bps": 16.6,
+   "funding_rate_last": 0.0001,
+   "horizon_h": 72.0,
+   "settlements": 9,
+   "funding_bps_horizon": 9.0,
+   "basis_exit_assumed_bps": 0.0,
+   "basis_shock_bps": 100.0,
+   "net_edge_bps": -5.414,
+   "expected_edge_usd": -1.8,
+   "allocated_risk_usd": 38.8
+  },
+  "size_base": 4.85,
+  "notional_usd": 3328.0,
+  "horizon_h": 72.0,
+  "is_actionable": true,
+  "reason": "ok",
+  "min_edge_bps_used": -20.0,
+  "freshness": {
+   "cex_age_ms": 412,
+   "dex_age_ms": 2870,
+   "spot_age_ms": 655,
+   "ok": true,
+   "reason": null
+  },
+  "ts": "2026-09-02T14:32:09.590000Z"
+ },
+ "history": [
+  {
+   "ts": "2026-09-02T14:22:20Z",
+   "dex_exec": 686.17,
+   "perp_ref": 686.3,
+   "basis_bps": 1.895,
+   "net_edge_bps": -5.705,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:22:30Z",
+   "dex_exec": 686.23,
+   "perp_ref": 686.35,
+   "basis_bps": 1.749,
+   "net_edge_bps": -5.851,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:22:40Z",
+   "dex_exec": 686.25,
+   "perp_ref": 686.39,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:22:50Z",
+   "dex_exec": 686.23,
+   "perp_ref": 686.38,
+   "basis_bps": 2.186,
+   "net_edge_bps": -5.414,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:00Z",
+   "dex_exec": 686.26,
+   "perp_ref": 686.39,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:10Z",
+   "dex_exec": 686.28,
+   "perp_ref": 686.39,
+   "basis_bps": 1.603,
+   "net_edge_bps": -5.997,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:20Z",
+   "dex_exec": 686.33,
+   "perp_ref": 686.5,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:30Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.43,
+   "basis_bps": 1.603,
+   "net_edge_bps": -5.997,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:40Z",
+   "dex_exec": 686.38,
+   "perp_ref": 686.54,
+   "basis_bps": 2.331,
+   "net_edge_bps": -5.269,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:23:50Z",
+   "dex_exec": 686.38,
+   "perp_ref": 686.5,
+   "basis_bps": 1.748,
+   "net_edge_bps": -5.852,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:00Z",
+   "dex_exec": 686.42,
+   "perp_ref": 686.51,
+   "basis_bps": 1.311,
+   "net_edge_bps": -6.289,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:10Z",
+   "dex_exec": 686.4,
+   "perp_ref": 686.51,
+   "basis_bps": 1.603,
+   "net_edge_bps": -5.997,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:20Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.42,
+   "basis_bps": 1.457,
+   "net_edge_bps": -6.143,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:30Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.48,
+   "basis_bps": 2.331,
+   "net_edge_bps": -5.269,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:40Z",
+   "dex_exec": 686.29,
+   "perp_ref": 686.43,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:24:50Z",
+   "dex_exec": 686.31,
+   "perp_ref": 686.44,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:00Z",
+   "dex_exec": 686.28,
+   "perp_ref": 686.38,
+   "basis_bps": 1.457,
+   "net_edge_bps": -6.143,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:10Z",
+   "dex_exec": 686.2,
+   "perp_ref": 686.33,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:20Z",
+   "dex_exec": 686.23,
+   "perp_ref": 686.37,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:30Z",
+   "dex_exec": 686.17,
+   "perp_ref": 686.33,
+   "basis_bps": 2.332,
+   "net_edge_bps": -5.268,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:40Z",
+   "dex_exec": 686.15,
+   "perp_ref": 686.29,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:25:50Z",
+   "dex_exec": 686.16,
+   "perp_ref": 686.33,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:00Z",
+   "dex_exec": 686.07,
+   "perp_ref": 686.24,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:10Z",
+   "dex_exec": 686.08,
+   "perp_ref": 686.27,
+   "basis_bps": 2.769,
+   "net_edge_bps": -4.831,
+   "funding_rate": 0.0001,
+   "actionable": false,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:20Z",
+   "dex_exec": 686.08,
+   "perp_ref": 686.22,
+   "basis_bps": 2.041,
+   "net_edge_bps": -5.559,
+   "funding_rate": 0.0001,
+   "actionable": false,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:30Z",
+   "dex_exec": 686.08,
+   "perp_ref": 686.21,
+   "basis_bps": 1.895,
+   "net_edge_bps": -5.705,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:40Z",
+   "dex_exec": 686.01,
+   "perp_ref": 686.2,
+   "basis_bps": 2.77,
+   "net_edge_bps": -4.83,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:26:50Z",
+   "dex_exec": 685.98,
+   "perp_ref": 686.15,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:00Z",
+   "dex_exec": 685.96,
+   "perp_ref": 686.15,
+   "basis_bps": 2.77,
+   "net_edge_bps": -4.83,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:10Z",
+   "dex_exec": 686.04,
+   "perp_ref": 686.21,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:20Z",
+   "dex_exec": 686.05,
+   "perp_ref": 686.2,
+   "basis_bps": 2.186,
+   "net_edge_bps": -5.414,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:30Z",
+   "dex_exec": 686.05,
+   "perp_ref": 686.22,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:40Z",
+   "dex_exec": 686.05,
+   "perp_ref": 686.21,
+   "basis_bps": 2.332,
+   "net_edge_bps": -5.268,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:27:50Z",
+   "dex_exec": 686.1,
+   "perp_ref": 686.29,
+   "basis_bps": 2.769,
+   "net_edge_bps": -4.831,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:00Z",
+   "dex_exec": 686.08,
+   "perp_ref": 686.26,
+   "basis_bps": 2.624,
+   "net_edge_bps": -4.976,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:10Z",
+   "dex_exec": 686.07,
+   "perp_ref": 686.25,
+   "basis_bps": 2.624,
+   "net_edge_bps": -4.976,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:20Z",
+   "dex_exec": 686.15,
+   "perp_ref": 686.35,
+   "basis_bps": 2.915,
+   "net_edge_bps": -4.685,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:30Z",
+   "dex_exec": 686.2,
+   "perp_ref": 686.33,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:40Z",
+   "dex_exec": 686.19,
+   "perp_ref": 686.35,
+   "basis_bps": 2.332,
+   "net_edge_bps": -5.268,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:28:50Z",
+   "dex_exec": 686.18,
+   "perp_ref": 686.33,
+   "basis_bps": 2.186,
+   "net_edge_bps": -5.414,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:00Z",
+   "dex_exec": 686.22,
+   "perp_ref": 686.34,
+   "basis_bps": 1.749,
+   "net_edge_bps": -5.851,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:10Z",
+   "dex_exec": 686.24,
+   "perp_ref": 686.41,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:20Z",
+   "dex_exec": 686.27,
+   "perp_ref": 686.39,
+   "basis_bps": 1.749,
+   "net_edge_bps": -5.851,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:30Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.49,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:40Z",
+   "dex_exec": 686.3,
+   "perp_ref": 686.44,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:29:50Z",
+   "dex_exec": 686.36,
+   "perp_ref": 686.53,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:00Z",
+   "dex_exec": 686.4,
+   "perp_ref": 686.56,
+   "basis_bps": 2.331,
+   "net_edge_bps": -5.269,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:10Z",
+   "dex_exec": 686.35,
+   "perp_ref": 686.48,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:20Z",
+   "dex_exec": 686.35,
+   "perp_ref": 686.52,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:30Z",
+   "dex_exec": 686.41,
+   "perp_ref": 686.51,
+   "basis_bps": 1.457,
+   "net_edge_bps": -6.143,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:40Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.43,
+   "basis_bps": 1.603,
+   "net_edge_bps": -5.997,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:30:50Z",
+   "dex_exec": 686.31,
+   "perp_ref": 686.44,
+   "basis_bps": 1.894,
+   "net_edge_bps": -5.706,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:00Z",
+   "dex_exec": 686.32,
+   "perp_ref": 686.44,
+   "basis_bps": 1.748,
+   "net_edge_bps": -5.852,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:10Z",
+   "dex_exec": 686.24,
+   "perp_ref": 686.38,
+   "basis_bps": 2.04,
+   "net_edge_bps": -5.56,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:20Z",
+   "dex_exec": 686.25,
+   "perp_ref": 686.4,
+   "basis_bps": 2.186,
+   "net_edge_bps": -5.414,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:30Z",
+   "dex_exec": 686.28,
+   "perp_ref": 686.44,
+   "basis_bps": 2.331,
+   "net_edge_bps": -5.269,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:40Z",
+   "dex_exec": 686.21,
+   "perp_ref": 686.37,
+   "basis_bps": 2.332,
+   "net_edge_bps": -5.268,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:31:50Z",
+   "dex_exec": 686.19,
+   "perp_ref": 686.31,
+   "basis_bps": 1.749,
+   "net_edge_bps": -5.851,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:32:00Z",
+   "dex_exec": 686.19,
+   "perp_ref": 686.36,
+   "basis_bps": 2.477,
+   "net_edge_bps": -5.123,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  },
+  {
+   "ts": "2026-09-02T14:32:10Z",
+   "dex_exec": 686.16,
+   "perp_ref": 686.33,
+   "basis_bps": 2.478,
+   "net_edge_bps": -5.122,
+   "funding_rate": 0.0001,
+   "actionable": true,
+   "source": "bsc-mainnet-chain"
+  }
+ ],
+ "decisions": [
+  {
+   "id": "dec_e2f7a90b13c6",
+   "plan_id": "plan_c8d21e0f9a44",
+   "approved": false,
+   "code": "LEVERAGE",
+   "reason": "VETO: Leverage 10x exceeds 3x limit.",
+   "observed": 10.0,
+   "limit": 3.0,
+   "unit": "x",
+   "checks": [
+    {
+     "name": "KILL_SWITCH",
+     "passed": true,
+     "observed": false,
+     "limit": false,
+     "unit": "bool"
+    },
+    {
+     "name": "HALTED_DRAWDOWN",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 300.0,
+     "unit": "bps"
+    },
+    {
+     "name": "MALFORMED",
+     "passed": true,
+     "observed": {
+      "leverage": 10.0,
+      "notional": 33320.0,
+      "allocated_risk": 388.51
+     },
+     "limit": "finite, >0",
+     "unit": ""
+    },
+    {
+     "name": "REDUCE_ONLY_UNVERIFIED",
+     "passed": true,
+     "observed": null,
+     "limit": "registered position_id",
+     "unit": ""
+    },
+    {
+     "name": "NOT_DELTA_NEUTRAL",
+     "passed": true,
+     "observed": "dex BUY / perp SELL",
+     "limit": "dex BUY / perp SELL",
+     "unit": ""
+    },
+    {
+     "name": "HEDGE_MISMATCH",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 0.2428,
+     "unit": "base"
+    },
+    {
+     "name": "LEVERAGE",
+     "passed": false,
+     "observed": 10.0,
+     "limit": 3.0,
+     "unit": "x"
+    },
+    {
+     "name": "MIN_NOTIONAL",
+     "passed": true,
+     "observed": 33320.0,
+     "limit": 5.0,
+     "unit": "USD"
+    },
+    {
+     "name": "MAX_NOTIONAL",
+     "passed": true,
+     "observed": 33320.0,
+     "limit": 50000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_RISK",
+     "passed": false,
+     "observed": 388.51,
+     "limit": 200.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_RISK",
+     "passed": false,
+     "observed": 427.31,
+     "limit": 300.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_CAPACITY",
+     "passed": false,
+     "observed": 41644.0,
+     "limit": 9000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_NOTIONAL",
+     "passed": false,
+     "observed": 36648.0,
+     "limit": 30000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "SYMBOL_NOT_ALLOWED",
+     "passed": true,
+     "observed": "BNBUSDT",
+     "limit": [
+      "BNBUSDT"
+     ],
+     "unit": ""
+    },
+    {
+     "name": "MAX_POSITIONS",
+     "passed": true,
+     "observed": 1,
+     "limit": 5,
+     "unit": "positions"
+    },
+    {
+     "name": "STALE_QUOTE",
+     "passed": true,
+     "observed": 2870.0,
+     "limit": 5000.0,
+     "unit": "ms"
+    },
+    {
+     "name": "PRICE_SANITY",
+     "passed": true,
+     "observed": 2.19,
+     "limit": 100.0,
+     "unit": "bps"
+    },
+    {
+     "name": "PRICE_DRIFT",
+     "passed": true,
+     "observed": 0.8,
+     "limit": 20.0,
+     "unit": "bps"
+    },
+    {
+     "name": "NEGATIVE_EDGE",
+     "passed": true,
+     "observed": -5.414,
+     "limit": -20.0,
+     "unit": "bps"
+    }
+   ],
+   "latency_ns": 7750,
+   "dd_state": "NORMAL",
+   "drawdown_pct": 0.0,
+   "halted": false,
+   "kill_switch": false,
+   "mode": "paper",
+   "dry_run": true,
+   "ts": "2026-09-02T14:31:39.600000Z",
+   "latency_us": 7.75
+  },
+  {
+   "id": "dec_a41b9e0c2f77",
+   "plan_id": "plan_3f9a1c7d2e5b",
+   "approved": true,
+   "code": "OK",
+   "reason": "APPROVED: Trade satisfies all Binance risk gates.",
+   "observed": null,
+   "limit": null,
+   "unit": "",
+   "checks": [
+    {
+     "name": "KILL_SWITCH",
+     "passed": true,
+     "observed": false,
+     "limit": false,
+     "unit": "bool"
+    },
+    {
+     "name": "HALTED_DRAWDOWN",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 300.0,
+     "unit": "bps"
+    },
+    {
+     "name": "MALFORMED",
+     "passed": true,
+     "observed": {
+      "leverage": 2.0,
+      "notional": 3328.0,
+      "allocated_risk": 38.8
+     },
+     "limit": "finite, >0",
+     "unit": ""
+    },
+    {
+     "name": "REDUCE_ONLY_UNVERIFIED",
+     "passed": true,
+     "observed": null,
+     "limit": "registered position_id",
+     "unit": ""
+    },
+    {
+     "name": "NOT_DELTA_NEUTRAL",
+     "passed": true,
+     "observed": "dex BUY / perp SELL",
+     "limit": "dex BUY / perp SELL",
+     "unit": ""
+    },
+    {
+     "name": "HEDGE_MISMATCH",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 0.02425,
+     "unit": "base"
+    },
+    {
+     "name": "LEVERAGE",
+     "passed": true,
+     "observed": 2.0,
+     "limit": 3.0,
+     "unit": "x"
+    },
+    {
+     "name": "MIN_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 5.0,
+     "unit": "USD"
+    },
+    {
+     "name": "MAX_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 50000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_RISK",
+     "passed": true,
+     "observed": 38.8,
+     "limit": 200.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_RISK",
+     "passed": true,
+     "observed": 38.8,
+     "limit": 300.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_CAPACITY",
+     "passed": true,
+     "observed": 4992.0,
+     "limit": 9000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 30000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "SYMBOL_NOT_ALLOWED",
+     "passed": true,
+     "observed": "BNBUSDT",
+     "limit": [
+      "BNBUSDT"
+     ],
+     "unit": ""
+    },
+    {
+     "name": "MAX_POSITIONS",
+     "passed": true,
+     "observed": 0,
+     "limit": 5,
+     "unit": "positions"
+    },
+    {
+     "name": "STALE_QUOTE",
+     "passed": true,
+     "observed": 2870.0,
+     "limit": 5000.0,
+     "unit": "ms"
+    },
+    {
+     "name": "PRICE_SANITY",
+     "passed": true,
+     "observed": 2.19,
+     "limit": 100.0,
+     "unit": "bps"
+    },
+    {
+     "name": "PRICE_DRIFT",
+     "passed": true,
+     "observed": 1.1,
+     "limit": 20.0,
+     "unit": "bps"
+    },
+    {
+     "name": "NEGATIVE_EDGE",
+     "passed": true,
+     "observed": -5.414,
+     "limit": -20.0,
+     "unit": "bps"
+    }
+   ],
+   "latency_ns": 20416,
+   "dd_state": "NORMAL",
+   "drawdown_pct": 0.0,
+   "halted": false,
+   "kill_switch": false,
+   "mode": "paper",
+   "dry_run": false,
+   "ts": "2026-09-02T14:30:35.400000Z",
+   "latency_us": 20.416
+  },
+  {
+   "id": "dec_9d0c3b7e1a20",
+   "plan_id": "plan_3f9a1c7d2e5b",
+   "approved": true,
+   "code": "OK",
+   "reason": "APPROVED: Trade satisfies all Binance risk gates.",
+   "observed": null,
+   "limit": null,
+   "unit": "",
+   "checks": [
+    {
+     "name": "KILL_SWITCH",
+     "passed": true,
+     "observed": false,
+     "limit": false,
+     "unit": "bool"
+    },
+    {
+     "name": "HALTED_DRAWDOWN",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 300.0,
+     "unit": "bps"
+    },
+    {
+     "name": "MALFORMED",
+     "passed": true,
+     "observed": {
+      "leverage": 2.0,
+      "notional": 3328.0,
+      "allocated_risk": 38.8
+     },
+     "limit": "finite, >0",
+     "unit": ""
+    },
+    {
+     "name": "REDUCE_ONLY_UNVERIFIED",
+     "passed": true,
+     "observed": null,
+     "limit": "registered position_id",
+     "unit": ""
+    },
+    {
+     "name": "NOT_DELTA_NEUTRAL",
+     "passed": true,
+     "observed": "dex BUY / perp SELL",
+     "limit": "dex BUY / perp SELL",
+     "unit": ""
+    },
+    {
+     "name": "HEDGE_MISMATCH",
+     "passed": true,
+     "observed": 0.0,
+     "limit": 0.02425,
+     "unit": "base"
+    },
+    {
+     "name": "LEVERAGE",
+     "passed": true,
+     "observed": 2.0,
+     "limit": 3.0,
+     "unit": "x"
+    },
+    {
+     "name": "MIN_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 5.0,
+     "unit": "USD"
+    },
+    {
+     "name": "MAX_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 50000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_RISK",
+     "passed": true,
+     "observed": 38.8,
+     "limit": 200.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_RISK",
+     "passed": true,
+     "observed": 38.8,
+     "limit": 300.0,
+     "unit": "USD"
+    },
+    {
+     "name": "CAPITAL_CAPACITY",
+     "passed": true,
+     "observed": 4992.0,
+     "limit": 9000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "AGGREGATE_NOTIONAL",
+     "passed": true,
+     "observed": 3328.0,
+     "limit": 30000.0,
+     "unit": "USD"
+    },
+    {
+     "name": "SYMBOL_NOT_ALLOWED",
+     "passed": true,
+     "observed": "BNBUSDT",
+     "limit": [
+      "BNBUSDT"
+     ],
+     "unit": ""
+    },
+    {
+     "name": "MAX_POSITIONS",
+     "passed": true,
+     "observed": 0,
+     "limit": 5,
+     "unit": "positions"
+    },
+    {
+     "name": "STALE_QUOTE",
+     "passed": true,
+     "observed": 2870.0,
+     "limit": 5000.0,
+     "unit": "ms"
+    },
+    {
+     "name": "PRICE_SANITY",
+     "passed": true,
+     "observed": 2.19,
+     "limit": 100.0,
+     "unit": "bps"
+    },
+    {
+     "name": "PRICE_DRIFT",
+     "passed": true,
+     "observed": 1.1,
+     "limit": 20.0,
+     "unit": "bps"
+    },
+    {
+     "name": "NEGATIVE_EDGE",
+     "passed": true,
+     "observed": -5.414,
+     "limit": -20.0,
+     "unit": "bps"
+    }
+   ],
+   "latency_ns": 20416,
+   "dd_state": "NORMAL",
+   "drawdown_pct": 0.0,
+   "halted": false,
+   "kill_switch": false,
+   "mode": "paper",
+   "dry_run": true,
+   "ts": "2026-09-02T14:30:34.800000Z",
+   "latency_us": 20.416
+  }
+ ],
+ "positions": [
+  {
+   "id": "pos_5e2d8b1f6a03",
+   "plan_id": "plan_3f9a1c7d2e5b",
+   "symbol": "BNBUSDT",
+   "dex_qty": 4.85,
+   "dex_entry": 686.26,
+   "perp_qty": 4.85,
+   "perp_entry": 686.2,
+   "leverage": 2.0,
+   "margin_usd": 1664.0,
+   "notional_usd": 3328.0,
+   "allocated_risk_usd": 38.8,
+   "basis_entry_bps": 2.186,
+   "opened_at": "2026-09-02T14:30:35.550000Z",
+   "funding_accrued_usd": 0.0,
+   "unrealized_pnl_usd": -5.4,
+   "est_exit_cost_usd": 2.77,
+   "realized_pnl_usd": 0.0,
+   "delta_base": 0.0,
+   "stop_distance_usd": 33.4,
+   "liq_price_est": 1025.2,
+   "status": "open",
+   "stress_applied": null,
+   "closed_at": null,
+   "close_reason": null
+  }
+ ],
+ "portfolio": {
+  "equity_usd": 9994.6,
+  "cash_usd": 5008.0,
+  "reserved_cash_usd": 4992.0,
+  "peak_equity_usd": 10000.0,
+  "drawdown_pct": 0.054,
+  "dd_state": "NORMAL",
+  "total_pnl_usd": -5.4,
+  "spread_pnl_usd": -2.63,
+  "funding_pnl_usd": 0.0,
+  "fees_paid_usd": 2.77,
+  "open_positions": 1,
+  "daily_realized_usd": 0.0,
+  "equity_curve": [
+   [
+    "2026-09-02T14:22:10Z",
+    9999.94
+   ],
+   [
+    "2026-09-02T14:22:20Z",
+    9999.94
+   ],
+   [
+    "2026-09-02T14:22:30Z",
+    9999.76
+   ],
+   [
+    "2026-09-02T14:22:40Z",
+    10000.08
+   ],
+   [
+    "2026-09-02T14:22:50Z",
+    9999.74
+   ],
+   [
+    "2026-09-02T14:23:00Z",
+    9999.74
+   ],
+   [
+    "2026-09-02T14:23:10Z",
+    9999.83
+   ],
+   [
+    "2026-09-02T14:23:20Z",
+    9999.8
+   ],
+   [
+    "2026-09-02T14:23:30Z",
+    9999.9
+   ],
+   [
+    "2026-09-02T14:23:40Z",
+    9999.73
+   ],
+   [
+    "2026-09-02T14:23:50Z",
+    9999.7
+   ],
+   [
+    "2026-09-02T14:24:00Z",
+    9999.79
+   ],
+   [
+    "2026-09-02T14:24:10Z",
+    9999.76
+   ],
+   [
+    "2026-09-02T14:24:20Z",
+    9999.92
+   ],
+   [
+    "2026-09-02T14:24:30Z",
+    9999.72
+   ],
+   [
+    "2026-09-02T14:24:40Z",
+    10000.22
+   ],
+   [
+    "2026-09-02T14:24:50Z",
+    10000.07
+   ],
+   [
+    "2026-09-02T14:25:00Z",
+    9999.79
+   ],
+   [
+    "2026-09-02T14:25:10Z",
+    9999.85
+   ],
+   [
+    "2026-09-02T14:25:20Z",
+    9999.91
+   ],
+   [
+    "2026-09-02T14:25:30Z",
+    9999.92
+   ],
+   [
+    "2026-09-02T14:25:40Z",
+    9999.77
+   ],
+   [
+    "2026-09-02T14:25:50Z",
+    10000.21
+   ],
+   [
+    "2026-09-02T14:26:00Z",
+    10000.3
+   ],
+   [
+    "2026-09-02T14:26:10Z",
+    9999.98
+   ],
+   [
+    "2026-09-02T14:26:20Z",
+    9999.99
+   ],
+   [
+    "2026-09-02T14:26:30Z",
+    9999.75
+   ],
+   [
+    "2026-09-02T14:26:40Z",
+    9999.76
+   ],
+   [
+    "2026-09-02T14:26:50Z",
+    9999.91
+   ],
+   [
+    "2026-09-02T14:27:00Z",
+    9999.86
+   ],
+   [
+    "2026-09-02T14:27:10Z",
+    10000.2
+   ],
+   [
+    "2026-09-02T14:27:20Z",
+    9999.8
+   ],
+   [
+    "2026-09-02T14:27:30Z",
+    9999.71
+   ],
+   [
+    "2026-09-02T14:27:40Z",
+    10000.27
+   ],
+   [
+    "2026-09-02T14:27:50Z",
+    10000.02
+   ],
+   [
+    "2026-09-02T14:28:00Z",
+    9999.79
+   ],
+   [
+    "2026-09-02T14:28:10Z",
+    10000.03
+   ],
+   [
+    "2026-09-02T14:28:20Z",
+    9999.72
+   ],
+   [
+    "2026-09-02T14:28:30Z",
+    10000.02
+   ],
+   [
+    "2026-09-02T14:28:40Z",
+    10000.29
+   ],
+   [
+    "2026-09-02T14:28:50Z",
+    10000.22
+   ],
+   [
+    "2026-09-02T14:29:00Z",
+    10000.12
+   ],
+   [
+    "2026-09-02T14:29:10Z",
+    9999.86
+   ],
+   [
+    "2026-09-02T14:29:20Z",
+    9999.92
+   ],
+   [
+    "2026-09-02T14:29:30Z",
+    9999.8
+   ],
+   [
+    "2026-09-02T14:29:40Z",
+    10000.16
+   ],
+   [
+    "2026-09-02T14:29:50Z",
+    10000.02
+   ],
+   [
+    "2026-09-02T14:30:00Z",
+    10000.17
+   ],
+   [
+    "2026-09-02T14:30:10Z",
+    9999.9
+   ],
+   [
+    "2026-09-02T14:30:20Z",
+    9999.83
+   ],
+   [
+    "2026-09-02T14:30:30Z",
+    10000.19
+   ],
+   [
+    "2026-09-02T14:30:40Z",
+    9994.89
+   ],
+   [
+    "2026-09-02T14:30:50Z",
+    9994.81
+   ],
+   [
+    "2026-09-02T14:31:00Z",
+    9994.78
+   ],
+   [
+    "2026-09-02T14:31:10Z",
+    9994.79
+   ],
+   [
+    "2026-09-02T14:31:20Z",
+    9994.74
+   ],
+   [
+    "2026-09-02T14:31:30Z",
+    9994.44
+   ],
+   [
+    "2026-09-02T14:31:40Z",
+    9994.61
+   ],
+   [
+    "2026-09-02T14:31:50Z",
+    9994.51
+   ],
+   [
+    "2026-09-02T14:32:00Z",
+    9994.32
+   ]
+  ],
+  "ts": "2026-09-02T14:32:10Z"
+ },
+ "receipts": [
+  {
+   "id": "rcpt_b7e4d2a9c150",
+   "plan_id": "plan_3f9a1c7d2e5b",
+   "source": "mcp",
+   "client": "claude-desktop/0.12",
+   "prompt": "Rebalance $5,000 USDC into delta-neutral BNB arbitrage.",
+   "mode": "paper",
+   "status": "filled",
+   "decision": {
+    "id": "dec_a41b9e0c2f77",
+    "plan_id": "plan_3f9a1c7d2e5b",
+    "approved": true,
+    "code": "OK",
+    "reason": "APPROVED: Trade satisfies all Binance risk gates.",
+    "observed": null,
+    "limit": null,
+    "unit": "",
+    "checks": [
+     {
+      "name": "KILL_SWITCH",
+      "passed": true,
+      "observed": false,
+      "limit": false,
+      "unit": "bool"
+     },
+     {
+      "name": "HALTED_DRAWDOWN",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 300.0,
+      "unit": "bps"
+     },
+     {
+      "name": "MALFORMED",
+      "passed": true,
+      "observed": {
+       "leverage": 2.0,
+       "notional": 3328.0,
+       "allocated_risk": 38.8
+      },
+      "limit": "finite, >0",
+      "unit": ""
+     },
+     {
+      "name": "REDUCE_ONLY_UNVERIFIED",
+      "passed": true,
+      "observed": null,
+      "limit": "registered position_id",
+      "unit": ""
+     },
+     {
+      "name": "NOT_DELTA_NEUTRAL",
+      "passed": true,
+      "observed": "dex BUY / perp SELL",
+      "limit": "dex BUY / perp SELL",
+      "unit": ""
+     },
+     {
+      "name": "HEDGE_MISMATCH",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 0.02425,
+      "unit": "base"
+     },
+     {
+      "name": "LEVERAGE",
+      "passed": true,
+      "observed": 2.0,
+      "limit": 3.0,
+      "unit": "x"
+     },
+     {
+      "name": "MIN_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 5.0,
+      "unit": "USD"
+     },
+     {
+      "name": "MAX_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 50000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_RISK",
+      "passed": true,
+      "observed": 38.8,
+      "limit": 200.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_RISK",
+      "passed": true,
+      "observed": 38.8,
+      "limit": 300.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_CAPACITY",
+      "passed": true,
+      "observed": 4992.0,
+      "limit": 9000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 30000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "SYMBOL_NOT_ALLOWED",
+      "passed": true,
+      "observed": "BNBUSDT",
+      "limit": [
+       "BNBUSDT"
+      ],
+      "unit": ""
+     },
+     {
+      "name": "MAX_POSITIONS",
+      "passed": true,
+      "observed": 0,
+      "limit": 5,
+      "unit": "positions"
+     },
+     {
+      "name": "STALE_QUOTE",
+      "passed": true,
+      "observed": 2870.0,
+      "limit": 5000.0,
+      "unit": "ms"
+     },
+     {
+      "name": "PRICE_SANITY",
+      "passed": true,
+      "observed": 2.19,
+      "limit": 100.0,
+      "unit": "bps"
+     },
+     {
+      "name": "PRICE_DRIFT",
+      "passed": true,
+      "observed": 1.1,
+      "limit": 20.0,
+      "unit": "bps"
+     },
+     {
+      "name": "NEGATIVE_EDGE",
+      "passed": true,
+      "observed": -5.414,
+      "limit": -20.0,
+      "unit": "bps"
+     }
+    ],
+    "latency_ns": 20416,
+    "dd_state": "NORMAL",
+    "drawdown_pct": 0.0,
+    "halted": false,
+    "kill_switch": false,
+    "mode": "paper",
+    "dry_run": false,
+    "ts": "2026-09-02T14:30:35.400000Z",
+    "latency_us": 20.416
+   },
+   "plan": {
+    "id": "plan_3f9a1c7d2e5b",
+    "opportunity_id": "opp_7c1e2a9b40d3",
+    "symbol": "BNBUSDT",
+    "legs": [
+     {
+      "venue": "pancakeswap_v3",
+      "symbol": "BNBUSDT",
+      "side": "BUY",
+      "qty": 4.85,
+      "price_hint": 686.19,
+      "reduce_only": false,
+      "leverage": 1.0,
+      "client_id": null,
+      "position_side": "BOTH"
+     },
+     {
+      "venue": "binance_futures",
+      "symbol": "BNBUSDT",
+      "side": "SELL",
+      "qty": 4.85,
+      "price_hint": 686.34,
+      "reduce_only": false,
+      "leverage": 2.0,
+      "client_id": "DLTR3f9a1c7dP1",
+      "position_side": "BOTH"
+     }
+    ],
+    "qty": 4.85,
+    "notional_usd": 3328.0,
+    "leverage": 2.0,
+    "margin_usd": 1664.0,
+    "cash_required_usd": 4992.0,
+    "allocated_risk_usd": 38.8,
+    "expected_edge_bps": -5.414,
+    "roundtrip_cost_bps": 16.6,
+    "ref_dex_price": 686.19,
+    "ref_perp_price": 686.34,
+    "reduce_only": false,
+    "position_id": null,
+    "source": "mcp",
+    "client": "claude-desktop/0.12",
+    "prompt": "Rebalance $5,000 USDC into delta-neutral BNB arbitrage.",
+    "created_at": "2026-09-02T14:30:35Z",
+    "expires_at": "2026-09-02T14:31:35Z",
+    "plan_hash": "53240855f67d4c45e49038564bcba70bbfceea9ff9e67a4c9c0c5bd84e4ee770"
+   },
+   "fills": [
+    {
+     "leg_index": 0,
+     "venue": "pancakeswap_v3",
+     "symbol": "BNBUSDT",
+     "side": "BUY",
+     "qty": 4.85,
+     "price": 686.26,
+     "fee_usd": 0.436,
+     "ref": "paper",
+     "simulated": false,
+     "source": "paper",
+     "client_id": null,
+     "attempt": 1,
+     "reference_divergence_bps": null,
+     "latency_ms": 38,
+     "ts": "2026-09-02T14:30:35.500000Z"
+    },
+    {
+     "leg_index": 1,
+     "venue": "binance_futures",
+     "symbol": "BNBUSDT",
+     "side": "SELL",
+     "qty": 4.85,
+     "price": 686.2,
+     "fee_usd": 1.664,
+     "ref": "paper",
+     "simulated": false,
+     "source": "paper",
+     "client_id": "DLTR3f9a1c7dP1",
+     "attempt": 1,
+     "reference_divergence_bps": -2.0,
+     "latency_ms": 21,
+     "ts": "2026-09-02T14:30:35.530000Z"
+    }
+   ],
+   "position_id": "pos_5e2d8b1f6a03",
+   "residual_delta_base": 0.0,
+   "realized_cost_usd": 2.1,
+   "legging_window_ms": 59,
+   "steps": [
+    {
+     "step": "intent",
+     "status": "ok",
+     "summary": "rebalance $5,000 USDC (treated as USDT-equivalent) into BNBUSDT hedge, 2x",
+     "data": {
+      "action": "rebalance",
+      "capital_usd": 5000,
+      "leverage": 2.0
+     },
+     "latency_ms": 3,
+     "ts": "2026-09-02T14:30:34.100000Z"
+    },
+    {
+     "step": "scan",
+     "status": "ok",
+     "summary": "DEX exec 686.19 vs perp mark 686.34: basis +2.2 bps, net -5.4 bps (min-edge override -20)",
+     "data": {
+      "dex_exec": 686.19,
+      "perp_ref": 686.34,
+      "net_edge_bps": -5.41
+     },
+     "latency_ms": 41,
+     "ts": "2026-09-02T14:30:34.500000Z"
+    },
+    {
+     "step": "plan",
+     "status": "ok",
+     "summary": "4.85 BNB, notional $3,328, margin $1,664, cash required $4,992",
+     "data": {
+      "plan_id": "plan_3f9a1c7d2e5b",
+      "qty": 4.85,
+      "cash_required_usd": 4992
+     },
+     "latency_ms": 2,
+     "ts": "2026-09-02T14:30:34.700000Z"
+    },
+    {
+     "step": "gate",
+     "status": "ok",
+     "summary": "APPROVED OK: 19/19 checks passed",
+     "data": {
+      "decision_id": "dec_a41b9e0c2f77",
+      "latency_us": 20.416
+     },
+     "latency_ms": 0,
+     "ts": "2026-09-02T14:30:35.400000Z"
+    },
+    {
+     "step": "dex_fill",
+     "status": "ok",
+     "summary": "BUY 4.85 BNB @ 686.26 (QuoterV2 686.19 +1 bps paper slippage)",
+     "data": {
+      "price": 686.26,
+      "ref": "paper"
+     },
+     "latency_ms": 38,
+     "ts": "2026-09-02T14:30:35.500000Z"
+    },
+    {
+     "step": "cex_fill",
+     "status": "ok",
+     "summary": "SELL 4.85 BNBUSDT perp @ 686.2 (mark -2 bps, reduce_only=false)",
+     "data": {
+      "price": 686.2,
+      "client_id": "DLTR3f9a1c7dP1"
+     },
+     "latency_ms": 21,
+     "ts": "2026-09-02T14:30:35.530000Z"
+    },
+    {
+     "step": "position",
+     "status": "ok",
+     "summary": "pos_5e2d8b1f6a03 opened, delta 0.00 BNB, stop distance $38.8",
+     "data": {
+      "position_id": "pos_5e2d8b1f6a03",
+      "delta_base": 0.0
+     },
+     "latency_ms": 1,
+     "ts": "2026-09-02T14:30:35.550000Z"
+    },
+    {
+     "step": "receipt",
+     "status": "ok",
+     "summary": "sealed receipt rcpt_b7e4d2a9c150 (sha256)",
+     "data": {
+      "receipt_id": "rcpt_b7e4d2a9c150"
+     },
+     "latency_ms": 1,
+     "ts": "2026-09-02T14:30:35.560000Z"
+    }
+   ],
+   "stress_active": null,
+   "sha256": "559909e80c6b2a972ca15d4aae145a33d9e8ca316fa2488076d4e1097d1e4878",
+   "ts": "2026-09-02T14:30:35.560000Z"
+  }
+ ],
+ "prompts": [
+  {
+   "intent": {
+    "action": "hedge",
+    "capital_usd": 50000.0,
+    "leverage": 10.0,
+    "symbol": "BNBUSDT",
+    "position_id": null,
+    "stress_kind": null,
+    "magnitude": null,
+    "min_edge_bps": null,
+    "stablecoin_note": null,
+    "confidence": 0.98,
+    "raw": "Do it again with $50,000 at 10x.",
+    "source": "mcp"
+   },
+   "opportunity": {
+    "id": "opp_7c1e2a9b40d3",
+    "symbol": "BNBUSDT",
+    "direction": "long_dex_short_perp",
+    "dex_price": 686.19,
+    "perp_price": 686.34,
+    "edge": {
+     "notional_usd": 3328.0,
+     "basis_entry_bps": 2.186,
+     "dex_fee_bps": 1.0,
+     "dex_impact_bps": 0.3,
+     "perp_slip_bps": 1.0,
+     "cex_taker_bps": 5.0,
+     "gas_bps_leg": 1.0,
+     "roundtrip_cost_bps": 16.6,
+     "funding_rate_last": 0.0001,
+     "horizon_h": 72.0,
+     "settlements": 9,
+     "funding_bps_horizon": 9.0,
+     "basis_exit_assumed_bps": 0.0,
+     "basis_shock_bps": 100.0,
+     "net_edge_bps": -5.414,
+     "expected_edge_usd": -1.8,
+     "allocated_risk_usd": 38.8
+    },
+    "size_base": 4.85,
+    "notional_usd": 3328.0,
+    "horizon_h": 72.0,
+    "is_actionable": true,
+    "reason": "ok",
+    "min_edge_bps_used": -20.0,
+    "freshness": {
+     "cex_age_ms": 412,
+     "dex_age_ms": 2870,
+     "spot_age_ms": 655,
+     "ok": true,
+     "reason": null
+    },
+    "ts": "2026-09-02T14:32:09.590000Z"
+   },
+   "plan": {
+    "id": "plan_c8d21e0f9a44",
+    "opportunity_id": "opp_7c1e2a9b40d3",
+    "symbol": "BNBUSDT",
+    "legs": [
+     {
+      "venue": "pancakeswap_v3",
+      "symbol": "BNBUSDT",
+      "side": "BUY",
+      "qty": 48.56,
+      "price_hint": 686.19,
+      "reduce_only": false,
+      "leverage": 1.0,
+      "client_id": null,
+      "position_side": "BOTH"
+     },
+     {
+      "venue": "binance_futures",
+      "symbol": "BNBUSDT",
+      "side": "SELL",
+      "qty": 48.56,
+      "price_hint": 686.34,
+      "reduce_only": false,
+      "leverage": 10.0,
+      "client_id": "DLTRc8d21e0fP1",
+      "position_side": "BOTH"
+     }
+    ],
+    "qty": 48.56,
+    "notional_usd": 33320.0,
+    "leverage": 10.0,
+    "margin_usd": 3332.0,
+    "cash_required_usd": 36652.0,
+    "allocated_risk_usd": 388.51,
+    "expected_edge_bps": -5.414,
+    "roundtrip_cost_bps": 16.6,
+    "ref_dex_price": 686.19,
+    "ref_perp_price": 686.34,
+    "reduce_only": false,
+    "position_id": null,
+    "source": "mcp",
+    "client": "claude-desktop/0.12",
+    "prompt": "Do it again with $50,000 at 10x.",
+    "created_at": "2026-09-02T14:31:39Z",
+    "expires_at": "2026-09-02T14:32:39Z",
+    "plan_hash": "c861d3937255b3273c64fa97aea28a2b1220726b65f2d774fa2962ab36b32a71"
+   },
+   "plan_id": "plan_c8d21e0f9a44",
+   "proposal": {
+    "plan_id": "plan_c8d21e0f9a44",
+    "symbol": "BNBUSDT",
+    "dex_side": "BUY",
+    "perp_side": "SELL",
+    "dex_qty": 48.56,
+    "perp_qty": 48.56,
+    "qty_step": 0.01,
+    "leverage": 10.0,
+    "notional": 33320.0,
+    "allocated_risk": 388.51,
+    "roundtrip_cost_bps": 16.6,
+    "expected_edge_bps": -5.414,
+    "quote_age_ms": 2870.0,
+    "price_drift_bps": 0.8,
+    "dex_ref_price": 686.19,
+    "perp_ref_price": 686.34,
+    "reduce_only": false,
+    "position_id": null,
+    "is_delta_neutral": true
+   },
+   "precheck": {
+    "id": "dec_e2f7a90b13c6",
+    "plan_id": "plan_c8d21e0f9a44",
+    "approved": false,
+    "code": "LEVERAGE",
+    "reason": "VETO: Leverage 10x exceeds 3x limit.",
+    "observed": 10.0,
+    "limit": 3.0,
+    "unit": "x",
+    "checks": [
+     {
+      "name": "KILL_SWITCH",
+      "passed": true,
+      "observed": false,
+      "limit": false,
+      "unit": "bool"
+     },
+     {
+      "name": "HALTED_DRAWDOWN",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 300.0,
+      "unit": "bps"
+     },
+     {
+      "name": "MALFORMED",
+      "passed": true,
+      "observed": {
+       "leverage": 10.0,
+       "notional": 33320.0,
+       "allocated_risk": 388.51
+      },
+      "limit": "finite, >0",
+      "unit": ""
+     },
+     {
+      "name": "REDUCE_ONLY_UNVERIFIED",
+      "passed": true,
+      "observed": null,
+      "limit": "registered position_id",
+      "unit": ""
+     },
+     {
+      "name": "NOT_DELTA_NEUTRAL",
+      "passed": true,
+      "observed": "dex BUY / perp SELL",
+      "limit": "dex BUY / perp SELL",
+      "unit": ""
+     },
+     {
+      "name": "HEDGE_MISMATCH",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 0.2428,
+      "unit": "base"
+     },
+     {
+      "name": "LEVERAGE",
+      "passed": false,
+      "observed": 10.0,
+      "limit": 3.0,
+      "unit": "x"
+     },
+     {
+      "name": "MIN_NOTIONAL",
+      "passed": true,
+      "observed": 33320.0,
+      "limit": 5.0,
+      "unit": "USD"
+     },
+     {
+      "name": "MAX_NOTIONAL",
+      "passed": true,
+      "observed": 33320.0,
+      "limit": 50000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_RISK",
+      "passed": false,
+      "observed": 388.51,
+      "limit": 200.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_RISK",
+      "passed": false,
+      "observed": 427.31,
+      "limit": 300.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_CAPACITY",
+      "passed": false,
+      "observed": 41644.0,
+      "limit": 9000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_NOTIONAL",
+      "passed": false,
+      "observed": 36648.0,
+      "limit": 30000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "SYMBOL_NOT_ALLOWED",
+      "passed": true,
+      "observed": "BNBUSDT",
+      "limit": [
+       "BNBUSDT"
+      ],
+      "unit": ""
+     },
+     {
+      "name": "MAX_POSITIONS",
+      "passed": true,
+      "observed": 1,
+      "limit": 5,
+      "unit": "positions"
+     },
+     {
+      "name": "STALE_QUOTE",
+      "passed": true,
+      "observed": 2870.0,
+      "limit": 5000.0,
+      "unit": "ms"
+     },
+     {
+      "name": "PRICE_SANITY",
+      "passed": true,
+      "observed": 2.19,
+      "limit": 100.0,
+      "unit": "bps"
+     },
+     {
+      "name": "PRICE_DRIFT",
+      "passed": true,
+      "observed": 0.8,
+      "limit": 20.0,
+      "unit": "bps"
+     },
+     {
+      "name": "NEGATIVE_EDGE",
+      "passed": true,
+      "observed": -5.414,
+      "limit": -20.0,
+      "unit": "bps"
+     }
+    ],
+    "latency_ns": 7750,
+    "dd_state": "NORMAL",
+    "drawdown_pct": 0.0,
+    "halted": false,
+    "kill_switch": false,
+    "mode": "paper",
+    "dry_run": true,
+    "ts": "2026-09-02T14:31:39.600000Z",
+    "latency_us": 7.75
+   },
+   "message": "Precheck VETO LEVERAGE: VETO: Leverage 10x exceeds 3x limit.",
+   "steps": [
+    {
+     "step": "intent",
+     "status": "ok",
+     "summary": "hedge $50,000 at 10x into BNBUSDT",
+     "data": {
+      "action": "hedge",
+      "capital_usd": 50000,
+      "leverage": 10.0
+     },
+     "latency_ms": 2,
+     "ts": "2026-09-02T14:31:38.800000Z"
+    },
+    {
+     "step": "scan",
+     "status": "ok",
+     "summary": "DEX exec 686.19 vs perp mark 686.34: net -5.4 bps",
+     "data": {},
+     "latency_ms": 39,
+     "ts": "2026-09-02T14:31:39Z"
+    },
+    {
+     "step": "plan",
+     "status": "ok",
+     "summary": "48.56 BNB, notional $33,320, margin $3,332, cash required $36,652",
+     "data": {
+      "plan_id": "plan_c8d21e0f9a44"
+     },
+     "latency_ms": 2,
+     "ts": "2026-09-02T14:31:39.400000Z"
+    },
+    {
+     "step": "gate",
+     "status": "veto",
+     "summary": "VETO LEVERAGE: 10.0 > 3.0 x (7.75 us)",
+     "data": {
+      "decision_id": "dec_e2f7a90b13c6",
+      "code": "LEVERAGE"
+     },
+     "latency_ms": 0,
+     "ts": "2026-09-02T14:31:39.600000Z"
+    }
+   ],
+   "executes": false
+  },
+  {
+   "intent": {
+    "action": "rebalance",
+    "capital_usd": 5000.0,
+    "leverage": 2.0,
+    "symbol": "BNBUSDT",
+    "position_id": null,
+    "stress_kind": null,
+    "magnitude": null,
+    "min_edge_bps": null,
+    "stablecoin_note": "USDC treated as USDT-equivalent; no conversion leg in v1",
+    "confidence": 0.96,
+    "raw": "Rebalance $5,000 USDC into delta-neutral BNB arbitrage.",
+    "source": "mcp"
+   },
+   "opportunity": {
+    "id": "opp_7c1e2a9b40d3",
+    "symbol": "BNBUSDT",
+    "direction": "long_dex_short_perp",
+    "dex_price": 686.19,
+    "perp_price": 686.34,
+    "edge": {
+     "notional_usd": 3328.0,
+     "basis_entry_bps": 2.186,
+     "dex_fee_bps": 1.0,
+     "dex_impact_bps": 0.3,
+     "perp_slip_bps": 1.0,
+     "cex_taker_bps": 5.0,
+     "gas_bps_leg": 1.0,
+     "roundtrip_cost_bps": 16.6,
+     "funding_rate_last": 0.0001,
+     "horizon_h": 72.0,
+     "settlements": 9,
+     "funding_bps_horizon": 9.0,
+     "basis_exit_assumed_bps": 0.0,
+     "basis_shock_bps": 100.0,
+     "net_edge_bps": -5.414,
+     "expected_edge_usd": -1.8,
+     "allocated_risk_usd": 38.8
+    },
+    "size_base": 4.85,
+    "notional_usd": 3328.0,
+    "horizon_h": 72.0,
+    "is_actionable": true,
+    "reason": "ok",
+    "min_edge_bps_used": -20.0,
+    "freshness": {
+     "cex_age_ms": 412,
+     "dex_age_ms": 2870,
+     "spot_age_ms": 655,
+     "ok": true,
+     "reason": null
+    },
+    "ts": "2026-09-02T14:32:09.590000Z"
+   },
+   "plan": {
+    "id": "plan_3f9a1c7d2e5b",
+    "opportunity_id": "opp_7c1e2a9b40d3",
+    "symbol": "BNBUSDT",
+    "legs": [
+     {
+      "venue": "pancakeswap_v3",
+      "symbol": "BNBUSDT",
+      "side": "BUY",
+      "qty": 4.85,
+      "price_hint": 686.19,
+      "reduce_only": false,
+      "leverage": 1.0,
+      "client_id": null,
+      "position_side": "BOTH"
+     },
+     {
+      "venue": "binance_futures",
+      "symbol": "BNBUSDT",
+      "side": "SELL",
+      "qty": 4.85,
+      "price_hint": 686.34,
+      "reduce_only": false,
+      "leverage": 2.0,
+      "client_id": "DLTR3f9a1c7dP1",
+      "position_side": "BOTH"
+     }
+    ],
+    "qty": 4.85,
+    "notional_usd": 3328.0,
+    "leverage": 2.0,
+    "margin_usd": 1664.0,
+    "cash_required_usd": 4992.0,
+    "allocated_risk_usd": 38.8,
+    "expected_edge_bps": -5.414,
+    "roundtrip_cost_bps": 16.6,
+    "ref_dex_price": 686.19,
+    "ref_perp_price": 686.34,
+    "reduce_only": false,
+    "position_id": null,
+    "source": "mcp",
+    "client": "claude-desktop/0.12",
+    "prompt": "Rebalance $5,000 USDC into delta-neutral BNB arbitrage.",
+    "created_at": "2026-09-02T14:30:35Z",
+    "expires_at": "2026-09-02T14:31:35Z",
+    "plan_hash": "53240855f67d4c45e49038564bcba70bbfceea9ff9e67a4c9c0c5bd84e4ee770"
+   },
+   "plan_id": "plan_3f9a1c7d2e5b",
+   "proposal": {
+    "plan_id": "plan_3f9a1c7d2e5b",
+    "symbol": "BNBUSDT",
+    "dex_side": "BUY",
+    "perp_side": "SELL",
+    "dex_qty": 4.85,
+    "perp_qty": 4.85,
+    "qty_step": 0.01,
+    "leverage": 2.0,
+    "notional": 3328.0,
+    "allocated_risk": 38.8,
+    "roundtrip_cost_bps": 16.6,
+    "expected_edge_bps": -5.414,
+    "quote_age_ms": 2870.0,
+    "price_drift_bps": 1.1,
+    "dex_ref_price": 686.19,
+    "perp_ref_price": 686.34,
+    "reduce_only": false,
+    "position_id": null,
+    "is_delta_neutral": true
+   },
+   "precheck": {
+    "id": "dec_9d0c3b7e1a20",
+    "plan_id": "plan_3f9a1c7d2e5b",
+    "approved": true,
+    "code": "OK",
+    "reason": "APPROVED: Trade satisfies all Binance risk gates.",
+    "observed": null,
+    "limit": null,
+    "unit": "",
+    "checks": [
+     {
+      "name": "KILL_SWITCH",
+      "passed": true,
+      "observed": false,
+      "limit": false,
+      "unit": "bool"
+     },
+     {
+      "name": "HALTED_DRAWDOWN",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 300.0,
+      "unit": "bps"
+     },
+     {
+      "name": "MALFORMED",
+      "passed": true,
+      "observed": {
+       "leverage": 2.0,
+       "notional": 3328.0,
+       "allocated_risk": 38.8
+      },
+      "limit": "finite, >0",
+      "unit": ""
+     },
+     {
+      "name": "REDUCE_ONLY_UNVERIFIED",
+      "passed": true,
+      "observed": null,
+      "limit": "registered position_id",
+      "unit": ""
+     },
+     {
+      "name": "NOT_DELTA_NEUTRAL",
+      "passed": true,
+      "observed": "dex BUY / perp SELL",
+      "limit": "dex BUY / perp SELL",
+      "unit": ""
+     },
+     {
+      "name": "HEDGE_MISMATCH",
+      "passed": true,
+      "observed": 0.0,
+      "limit": 0.02425,
+      "unit": "base"
+     },
+     {
+      "name": "LEVERAGE",
+      "passed": true,
+      "observed": 2.0,
+      "limit": 3.0,
+      "unit": "x"
+     },
+     {
+      "name": "MIN_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 5.0,
+      "unit": "USD"
+     },
+     {
+      "name": "MAX_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 50000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_RISK",
+      "passed": true,
+      "observed": 38.8,
+      "limit": 200.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_RISK",
+      "passed": true,
+      "observed": 38.8,
+      "limit": 300.0,
+      "unit": "USD"
+     },
+     {
+      "name": "CAPITAL_CAPACITY",
+      "passed": true,
+      "observed": 4992.0,
+      "limit": 9000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "AGGREGATE_NOTIONAL",
+      "passed": true,
+      "observed": 3328.0,
+      "limit": 30000.0,
+      "unit": "USD"
+     },
+     {
+      "name": "SYMBOL_NOT_ALLOWED",
+      "passed": true,
+      "observed": "BNBUSDT",
+      "limit": [
+       "BNBUSDT"
+      ],
+      "unit": ""
+     },
+     {
+      "name": "MAX_POSITIONS",
+      "passed": true,
+      "observed": 0,
+      "limit": 5,
+      "unit": "positions"
+     },
+     {
+      "name": "STALE_QUOTE",
+      "passed": true,
+      "observed": 2870.0,
+      "limit": 5000.0,
+      "unit": "ms"
+     },
+     {
+      "name": "PRICE_SANITY",
+      "passed": true,
+      "observed": 2.19,
+      "limit": 100.0,
+      "unit": "bps"
+     },
+     {
+      "name": "PRICE_DRIFT",
+      "passed": true,
+      "observed": 1.1,
+      "limit": 20.0,
+      "unit": "bps"
+     },
+     {
+      "name": "NEGATIVE_EDGE",
+      "passed": true,
+      "observed": -5.414,
+      "limit": -20.0,
+      "unit": "bps"
+     }
+    ],
+    "latency_ns": 20416,
+    "dd_state": "NORMAL",
+    "drawdown_pct": 0.0,
+    "halted": false,
+    "kill_switch": false,
+    "mode": "paper",
+    "dry_run": true,
+    "ts": "2026-09-02T14:30:34.800000Z",
+    "latency_us": 20.416
+   },
+   "message": "Plan ready: 4.85 BNB long on PancakeSwap V3, 4.85 BNB short on Binance Futures (2x). Precheck APPROVED. Call deltr_execute_hedge(plan_id) to execute.",
+   "steps": [
+    {
+     "step": "intent",
+     "status": "ok",
+     "summary": "rebalance $5,000 USDC (treated as USDT-equivalent) into BNBUSDT hedge, 2x",
+     "data": {
+      "action": "rebalance",
+      "capital_usd": 5000,
+      "leverage": 2.0
+     },
+     "latency_ms": 3,
+     "ts": "2026-09-02T14:30:34.100000Z"
+    },
+    {
+     "step": "scan",
+     "status": "ok",
+     "summary": "DEX exec 686.19 vs perp mark 686.34: basis +2.2 bps, net -5.4 bps (min-edge override -20)",
+     "data": {
+      "dex_exec": 686.19,
+      "perp_ref": 686.34,
+      "net_edge_bps": -5.41
+     },
+     "latency_ms": 41,
+     "ts": "2026-09-02T14:30:34.500000Z"
+    },
+    {
+     "step": "plan",
+     "status": "ok",
+     "summary": "4.85 BNB, notional $3,328, margin $1,664, cash required $4,992",
+     "data": {
+      "plan_id": "plan_3f9a1c7d2e5b",
+      "qty": 4.85,
+      "cash_required_usd": 4992
+     },
+     "latency_ms": 2,
+     "ts": "2026-09-02T14:30:34.700000Z"
+    },
+    {
+     "step": "gate",
+     "status": "ok",
+     "summary": "precheck APPROVED OK: 19/19 checks passed (dry run)",
+     "data": {
+      "decision_id": "dec_9d0c3b7e1a20"
+     },
+     "latency_ms": 0,
+     "ts": "2026-09-02T14:30:34.800000Z"
+    }
+   ],
+   "executes": false
+  }
+ ],
+ "activity": [
+  {
+   "id": "act_1a2b3c4d5e6f",
+   "direction": "inbound",
+   "client": "claude-desktop/0.12",
+   "server": "deltr",
+   "tool": "deltr_prompt",
+   "args": {
+    "text": "Rebalance $5,000 USDC into delta-neutral BNB arbitrage."
+   },
+   "result_summary": "plan plan_3f9a1c7d2e5b precheck APPROVED",
+   "ok": true,
+   "latency_ms": 41,
+   "trace_id": "plan_3f9a1c7d2e5b",
+   "ts": "2026-09-02T14:30:34.800000Z"
+  },
+  {
+   "id": "act_2b3c4d5e6f70",
+   "direction": "inbound",
+   "client": "claude-desktop/0.12",
+   "server": "deltr",
+   "tool": "deltr_execute_hedge",
+   "args": {
+    "plan_id": "plan_3f9a1c7d2e5b"
+   },
+   "result_summary": "filled rcpt_b7e4d2a9c150 delta 0.00",
+   "ok": true,
+   "latency_ms": 118,
+   "trace_id": "rcpt_b7e4d2a9c150",
+   "ts": "2026-09-02T14:30:35.600000Z"
+  },
+  {
+   "id": "act_3c4d5e6f7081",
+   "direction": "outbound",
+   "client": "bridge",
+   "server": "binance-shim",
+   "tool": "get_funding_rate",
+   "args": {
+    "symbol": "BNBUSDT"
+   },
+   "result_summary": "rate 0.0001 next 1h27m",
+   "ok": true,
+   "latency_ms": 23,
+   "trace_id": null,
+   "ts": "2026-09-02T14:31:10Z"
+  },
+  {
+   "id": "act_4d5e6f708192",
+   "direction": "inbound",
+   "client": "claude-desktop/0.12",
+   "server": "deltr",
+   "tool": "deltr_propose_hedge",
+   "args": {
+    "capital_usd": 50000,
+    "leverage": 10
+   },
+   "result_summary": "VETO LEVERAGE 10.0 > 3.0 x",
+   "ok": false,
+   "latency_ms": 37,
+   "trace_id": "plan_c8d21e0f9a44",
+   "ts": "2026-09-02T14:31:39.600000Z"
+  }
+ ],
+ "events": [
+  {
+   "topic": "fill",
+   "level": "info",
+   "message": "dex_fill BUY 4.85 BNB @ 686.26 (paper)",
+   "data": {
+    "receipt_id": "rcpt_b7e4d2a9c150"
+   },
+   "ts": "2026-09-02T14:30:35.500000Z"
+  },
+  {
+   "topic": "fill",
+   "level": "info",
+   "message": "cex_fill SELL 4.85 BNBUSDT @ 686.20 (paper)",
+   "data": {
+    "receipt_id": "rcpt_b7e4d2a9c150"
+   },
+   "ts": "2026-09-02T14:30:35.530000Z"
+  },
+  {
+   "topic": "position",
+   "level": "info",
+   "message": "pos_5e2d8b1f6a03 opened delta 0.00 BNB",
+   "data": {},
+   "ts": "2026-09-02T14:30:35.550000Z"
+  },
+  {
+   "topic": "gate",
+   "level": "warn",
+   "message": "VETO LEVERAGE 10.0 > 3.0 x",
+   "data": {
+    "decision_id": "dec_e2f7a90b13c6"
+   },
+   "ts": "2026-09-02T14:31:39.600000Z"
+  }
+ ],
+ "ts": "2026-09-02T14:32:10Z"
+}

@@ -1,0 +1,146 @@
+"use client";
+// Deltr dashboard (served at /app/): 12-column grid, 1 Hz snapshot poll with WS
+// accelerator, automatic fallback to the bundled mock so the page is never blank.
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import type { Snapshot } from "@/lib/types";
+import { fetchMockSnapshot, fetchSnapshot, openStream } from "@/lib/api";
+import StatusBar from "@/components/StatusBar";
+import SpreadChart from "@/components/SpreadChart";
+import EdgeWaterfall from "@/components/EdgeWaterfall";
+import PositionsTable from "@/components/PositionsTable";
+import RiskGateLog from "@/components/RiskGateLog";
+import TradeTrace from "@/components/TradeTrace";
+import McpActivity from "@/components/McpActivity";
+import PromptConsole from "@/components/PromptConsole";
+
+const LIVE_STALE_MS = 5000; // no live frame for this long -> the page is "down" (never silently swaps in fake rows)
+
+// The bundled mock is opt-in: `?mock=1`, or `next dev` off-origin with no NEXT_PUBLIC_API (no backend to
+// talk to).  When FastAPI serves the page a stalled backend keeps the last live snapshot and shows
+// "backend unreachable" instead of invented positions / receipts / MCP rows.
+function mockAllowed(): boolean {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("mock") === "1") return true;
+  if (q.get("mock") === "0") return false;
+  const devOrigin = /^https?:\/\/(localhost|127\.0\.0\.1):300[01]$/.test(window.location.origin);
+  return devOrigin && !process.env.NEXT_PUBLIC_API;
+}
+
+export default function Page() {
+  const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [mock, setMock] = useState(false);
+  const [transport, setTransport] = useState<"ws" | "poll" | "down">("down");
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [selectedTrace, setSelectedTrace] = useState<string | null>(null);
+  const lastLiveAt = useRef(0);
+  const mockCache = useRef<Snapshot | null>(null);
+  const mockLoading = useRef(false);
+
+  const loadMock = useCallback(async () => {
+    if (mockLoading.current || !mockAllowed()) return;
+    mockLoading.current = true;
+    try {
+      const m = mockCache.current ?? (await fetchMockSnapshot());
+      mockCache.current = m;
+      setSnap((prev) => (prev && lastLiveAt.current && Date.now() - lastLiveAt.current < LIVE_STALE_MS ? prev : m));
+      setMock(true);
+    } catch {
+      /* no mock either: keep whatever we have */
+    } finally {
+      mockLoading.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const h = openStream({
+      onSnapshot: (s) => {
+        lastLiveAt.current = Date.now();
+        setSnap(s);
+        setMock(false);
+        setLastUpdate(new Date().toISOString());
+      },
+      onTransport: setTransport,
+      onError: () => {
+        if (!lastLiveAt.current || Date.now() - lastLiveAt.current > LIVE_STALE_MS) void loadMock();
+      },
+    });
+    return () => h.stop();
+  }, [loadMock]);
+
+  const refresh = useCallback(async () => {
+    try {
+      const s = await fetchSnapshot();
+      lastLiveAt.current = Date.now();
+      setSnap(s);
+      setMock(false);
+    } catch {
+      /* the poller will retry */
+    }
+  }, []);
+
+  const status = snap?.status ?? null;
+  const portfolio = snap?.portfolio ?? null;
+  const market = snap?.market ?? null;
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-[1800px] flex-col gap-2 p-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <Link
+          href="/"
+          title="Back to the landing page"
+          className="flex shrink-0 items-center gap-1 self-start rounded-md border border-ink-700 bg-ink-900 px-2 py-1.5 text-xs text-gray-400 hover:border-gray-500 hover:text-gray-100 sm:self-auto"
+        >
+          <ArrowLeft size={12} /> Home
+        </Link>
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
+        </div>
+      </div>
+
+      {!snap ? (
+        <div className="flex h-64 items-center justify-center rounded-md border border-ink-700 bg-ink-900 text-sm text-gray-500">
+          connecting to Deltr…
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+            <div className="flex flex-col gap-2 lg:col-span-5">
+              <SpreadChart history={snap.history} market={market} minEdgeBps={status?.min_edge_bps ?? snap.opportunity?.min_edge_bps_used ?? null} />
+              <EdgeWaterfall
+                edge={snap.edge}
+                market={market}
+                actionable={snap.opportunity ? snap.opportunity.is_actionable : null}
+                reason={snap.opportunity?.reason ?? null}
+                mock={mock}
+              />
+            </div>
+            <div className="lg:col-span-4">
+              <PositionsTable positions={snap.positions} portfolio={portfolio} market={market} status={status} receipts={snap.receipts} mock={mock} onReceipt={setSelectedTrace} />
+            </div>
+            <div className="lg:col-span-3">
+              <RiskGateLog decisions={snap.decisions} status={status} mock={mock} onChanged={refresh} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <TradeTrace receipts={snap.receipts} prompts={snap.prompts} selectedTraceId={selectedTrace} onSelectTrace={setSelectedTrace} />
+            </div>
+            <div className="lg:col-span-5">
+              <McpActivity activity={snap.activity} status={status} onSelectTrace={setSelectedTrace} />
+            </div>
+          </div>
+
+          <PromptConsole status={status} mock={mock} onTrace={setSelectedTrace} onChanged={refresh} />
+        </>
+      )}
+      <footer className="px-1 py-2 text-xs text-gray-500 sm:text-sm">
+        Deltr never takes a directional bet, never talks to production, and no order reaches Binance without the deterministic zero-LLM risk gate.
+        Funding figures are testnet-derived and indicative.
+      </footer>
+    </main>
+  );
+}
