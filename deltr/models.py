@@ -42,6 +42,7 @@ class Venue(str, Enum):
     BINANCE_FUTURES = "binance_futures"
     BINANCE_SPOT = "binance_spot"
     PANCAKESWAP_V3 = "pancakeswap_v3"
+    BINANCE_AGENTIC_WALLET = "binance_agentic_wallet"  # on-chain leg executed by the Binance Agentic Wallet (baw); Deltr holds no key
 
 
 class Side(str, Enum):
@@ -52,6 +53,8 @@ class Side(str, Enum):
 class DataSource(str, Enum):
     """Provenance tag carried by every price, fill and history point (shown in the UI legend)."""
     BSC_MAINNET_CHAIN = "bsc-mainnet-chain"
+    BINANCE_AGENTIC_WALLET = "binance-agentic-wallet"  # reported by the Binance Agentic Wallet CLI (custody and signing stay with Binance)
+    BINANCE_FUTURES_MAINNET = "binance-futures-mainnet"   # real fapi.binance.com market data (keyless, read-only)
     BINANCE_FUTURES_TESTNET = "binance-futures-testnet"
     BINANCE_SPOT_MIRROR = "binance-spot-mirror"
     PAPER = "paper"
@@ -592,6 +595,15 @@ class SystemStatus(DeltrModel):
     leg_order: LegOrder
     limits: dict[str, Any]
     check_order: list[str]
+    # ---- mode / provenance / custody (additive; default to the pre-LIVE behaviour) ----
+    execution_style: Optional[str] = None      # "maker" | "taker" (None in PAPER: nothing reaches a venue)
+    execution_style_label: Optional[str] = None
+    data_source: Optional[str] = None          # where market data comes from: mainnet in every mode
+    real_funds_armed: bool = False             # True ONLY in LIVE, after the preflight passed
+    onchain_armed: bool = False                # the agentic-wallet opt-in triple is complete
+    wallet_address: Optional[str] = None       # the Agentic Wallet's PUBLIC address; never a key
+    max_notional_usd: Optional[float] = None
+    max_aggregate_usd: Optional[float] = None
 
 
 class Snapshot(DeltrModel):

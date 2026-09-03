@@ -4,7 +4,12 @@
   codes against.
 * ``MarketDataHub`` — REST polling: futures ``premiumIndex`` + ``bookTicker``
   and the spot-mirror ``bookTicker`` every ``poll_interval_cex_s``; the DEX
-  quote every ``poll_interval_dex_s``.  Computes ``Freshness`` from the
+  quote every ``poll_interval_dex_s``.  Market data comes from the optional
+  ``futures_data`` client (the keyless MAINNET ``fapi.binance.com`` feed in
+  every mode); ``futures`` stays the order-routing client and is never
+  re-pointed here.  Provenance is DERIVED from the host that answers
+  (``data_source_for``), so a testnet number can never be tagged mainnet, and a
+  DNS failure is reported with the resolver to check rather than hidden.  Computes ``Freshness`` from the
   configured ``cex_stale_ms`` / ``dex_stale_ms``, records ``VenueHealth`` into
   ``State.venues`` and NEVER raises from ``run()``: a failing venue keeps its
   last quote (whose age then grows past the threshold) and is marked unhealthy.
@@ -35,6 +40,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional, Protocol, runtime_checkable
 
 from deltr.config import REPO_ROOT, Settings
+from deltr.funding_history import FUTURES_MAINNET_REST, data_source_for, dns_hint_for
 from deltr.models import (
     DataSource,
     DexQuote,
@@ -54,9 +60,16 @@ REPLAY_FIXTURE_DEFAULT = "tests/fixtures/replay.jsonl"
 REPLAY_SCHEMA = "MarketState/v1"
 
 VENUE_FUTURES = "binance_futures_testnet"
+VENUE_FUTURES_MAINNET = "binance_futures_mainnet"   # the keyless mainnet market-data feed (never an order venue)
 VENUE_SPOT = "binance_spot_mirror"
 VENUE_DEX = "pancakeswap_v3"
 VENUE_ORDER = (VENUE_DEX, VENUE_FUTURES, VENUE_SPOT)
+
+# The health-slot name and provenance tag that go with a futures data feed.
+FUTURES_VENUE_BY_SOURCE: dict[DataSource, str] = {
+    DataSource.BINANCE_FUTURES_MAINNET: VENUE_FUTURES_MAINNET,
+    DataSource.BINANCE_FUTURES_TESTNET: VENUE_FUTURES,
+}
 
 MISSING_AGE_MS = 2**31 - 1          # "never received" sentinel (fits any int32 consumer)
 MAX_REPLAY_GAP_S = 5.0              # cap on inter-row sleep so a recorder hiccup never stalls the demo
@@ -238,14 +251,25 @@ class MarketDataHub(_HubBase):
         filters: SymbolFilters,
         quote_size_base: float,
         clock: Optional[Clock] = None,
+        futures_data: Optional[FuturesLike] = None,
     ) -> None:
         super().__init__(state, clock)
         self.settings = settings
         self.futures = futures
+        # Market data comes from ``futures_data`` when one is supplied (the keyless mainnet
+        # feed); ``futures`` stays the order-routing client and is never re-pointed here.
+        self.futures_data: FuturesLike = futures_data if futures_data is not None else futures
         self.spot = spot
         self.dex = dex
         self.filters = filters
         self.symbol = filters.symbol or settings.symbol
+        # Provenance is DERIVED from the host that will actually answer, never asserted by a
+        # caller, so a testnet number can never be tagged mainnet.  ``None`` (a duck-typed or
+        # unrecognised client) means "keep whatever tag the payload already carried".
+        self.futures_data_url: str = str(getattr(self.futures_data, "base_url", "") or "")
+        self.futures_source: Optional[DataSource] = data_source_for(self.futures_data_url)
+        self.venue_futures: str = FUTURES_VENUE_BY_SOURCE.get(self.futures_source or DataSource.BINANCE_FUTURES_TESTNET, VENUE_FUTURES)
+        self.venue_order: tuple[str, ...] = (VENUE_DEX, self.venue_futures, VENUE_SPOT)
         self._quote_size = float(quote_size_base)
         self._funding: Optional[FundingSnapshot] = None
         self._perp_book: Optional[Quote] = None
@@ -268,17 +292,22 @@ class MarketDataHub(_HubBase):
         return self._quote_size
 
     # interface
+    @property
+    def futures_tag(self) -> DataSource:
+        """The provenance tag for the futures feed (the derived one, or the historical default)."""
+        return self.futures_source or DataSource.BINANCE_FUTURES_TESTNET
+
     def health(self) -> list[VenueHealth]:
         now = self.now()
         out: list[VenueHealth] = []
-        for name in VENUE_ORDER:
+        for name in self.venue_order:
             h = self.state.venues.get(name)
             if h is None:
-                src = {VENUE_DEX: DataSource.BSC_MAINNET_CHAIN, VENUE_FUTURES: DataSource.BINANCE_FUTURES_TESTNET,
+                src = {VENUE_DEX: DataSource.BSC_MAINNET_CHAIN, self.venue_futures: self.futures_tag,
                        VENUE_SPOT: DataSource.BINANCE_SPOT_MIRROR}[name]
                 h = VenueHealth(name=name, ok=False, age_ms=MISSING_AGE_MS, source=src, detail="no data yet")
             else:
-                ts = {VENUE_DEX: self._dex, VENUE_FUTURES: self._funding, VENUE_SPOT: self._spot}[name]
+                ts = {VENUE_DEX: self._dex, self.venue_futures: self._funding, VENUE_SPOT: self._spot}[name]
                 h = h.model_copy(update={"age_ms": _age_ms(now, getattr(ts, "ts", None))})
             out.append(h)
         return out
@@ -309,6 +338,20 @@ class MarketDataHub(_HubBase):
                 pass
 
     # internals
+    def _retag(self, obj: Any) -> Any:
+        """Stamp the provenance the answering host warrants; leave it alone when it is unknown."""
+        src = self.futures_source
+        if src is None or getattr(obj, "source", None) is src:
+            return obj
+        return obj.model_copy(update={"source": src})
+
+    @staticmethod
+    def _venue_error(label: str, exc: Any, base_url: str) -> str:
+        """One health-record line for a failed venue call, naming the resolver on a DNS failure."""
+        base = f"{label}: {type(exc).__name__}: {exc}"
+        hint = dns_hint_for(exc, base_url) if isinstance(exc, BaseException) and base_url else None
+        return f"{label}: {hint}" if hint else base
+
     def _dex_due(self, force: bool) -> bool:
         if force or self._dex_fetched_mono is None:
             return True
@@ -317,8 +360,8 @@ class MarketDataHub(_HubBase):
     async def _poll(self, *, force_dex: bool) -> None:
         dex_due = self._dex_due(force_dex)
         coros: list[Awaitable[Any]] = [
-            self.futures.premium_index(self.symbol),
-            self.futures.book_ticker(self.symbol),
+            self.futures_data.premium_index(self.symbol),
+            self.futures_data.book_ticker(self.symbol),
             self.spot.book_ticker(self.symbol),
         ]
         if dex_due:
@@ -333,24 +376,25 @@ class MarketDataHub(_HubBase):
         # futures (premiumIndex is the reference; bookTicker is for fill simulation only)
         fut_errs: list[str] = []
         if isinstance(funding, FundingSnapshot):
-            self._funding = funding
+            self._funding = self._retag(funding)
         else:
-            fut_errs.append(f"premiumIndex: {type(funding).__name__}: {funding}")
+            fut_errs.append(self._venue_error("premiumIndex", funding, self.futures_data_url))
         if isinstance(book, Quote):
-            self._perp_book = book
+            self._perp_book = self._retag(book)
         else:
-            fut_errs.append(f"bookTicker: {type(book).__name__}: {book}")
+            fut_errs.append(self._venue_error("bookTicker", book, self.futures_data_url))
         now = self.now()
-        self._record_health(VENUE_FUTURES, not fut_errs, _age_ms(now, getattr(self._funding, "ts", None)),
-                            DataSource.BINANCE_FUTURES_TESTNET, "; ".join(fut_errs))
+        self._record_health(self.venue_futures, not fut_errs, _age_ms(now, getattr(self._funding, "ts", None)),
+                            self.futures_tag, "; ".join(fut_errs))
 
         # spot mirror
+        spot_url = str(getattr(self.spot, "base_url", "") or "")
         if isinstance(spot, Quote):
             self._spot = spot
             self._record_health(VENUE_SPOT, True, _age_ms(now, spot.ts), DataSource.BINANCE_SPOT_MIRROR)
         else:
             self._record_health(VENUE_SPOT, False, _age_ms(now, getattr(self._spot, "ts", None)),
-                                DataSource.BINANCE_SPOT_MIRROR, f"{type(spot).__name__}: {spot}")
+                                DataSource.BINANCE_SPOT_MIRROR, self._venue_error("bookTicker", spot, spot_url))
 
         # dex
         if dex_due:
@@ -388,7 +432,7 @@ class MarketDataHub(_HubBase):
             perp_ref_price=self._funding.mark_price if self._funding is not None else None,
             freshness=fr,
             ts=now,
-            source=DataSource.BINANCE_FUTURES_TESTNET,
+            source=self.futures_tag,
         )
 
 
@@ -584,6 +628,9 @@ __all__ = [
     "MISSING_AGE_MS",
     "FEED_STALE_REASON",
     "VENUE_FUTURES",
+    "VENUE_FUTURES_MAINNET",
+    "FUTURES_VENUE_BY_SOURCE",
+    "FUTURES_MAINNET_REST",
     "VENUE_SPOT",
     "VENUE_DEX",
     "VENUE_ORDER",
