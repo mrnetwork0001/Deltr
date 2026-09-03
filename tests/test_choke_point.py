@@ -1,7 +1,7 @@
 """tests/test_choke_point.py — AST-level import discipline.
 
 * ``deltr/mcp/*``, ``deltr/api/*`` and ``agents/*`` import neither ``deltr.venues.*``
-  nor the ``Executor`` / ``PaperRouter`` / ``TestnetRouter`` symbols: every order goes
+  nor the ``Executor`` / ``PaperRouter`` / ``TestnetRouter`` / ``LiveRouter`` symbols: every order goes
   through the Engine -> Executor choke point.
 * Routers are defined in ``deltr/executor.py`` and constructed only by ``deltr/engine.py``.
 * ``risk_gate`` is imported only where the design allows (portfolio, executor, engine,
@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 NO_VENUE_OR_ROUTER = sorted(list((ROOT / "deltr" / "mcp").glob("*.py")) + list((ROOT / "deltr" / "api").glob("*.py")) + list((ROOT / "agents").glob("*.py")))
-ROUTER_SYMBOLS = {"Executor", "PaperRouter", "TestnetRouter"}
+ROUTER_SYMBOLS = {"Executor", "PaperRouter", "TestnetRouter", "LiveRouter"}
 RISK_GATE_ALLOWED = {"deltr/portfolio.py", "deltr/executor.py", "deltr/engine.py", "main.py", "deltr/config.py"}
 ROUTER_IMPORTERS_ALLOWED = {"deltr/engine.py"}
 LIBRARY_FILES = sorted(p for p in list((ROOT / "deltr").rglob("*.py")) + list((ROOT / "agents").glob("*.py")) + [ROOT / "risk_gate.py"])
@@ -57,9 +57,10 @@ def test_routers_are_defined_once_and_constructed_only_by_the_engine():
         if _rel(path) == "deltr/executor.py":
             continue
         for mod, names in _imports(path):
-            if mod == "deltr.executor" and names & {"PaperRouter", "TestnetRouter"}:
+            if mod == "deltr.executor" and names & {"PaperRouter", "TestnetRouter", "LiveRouter"}:
                 assert _rel(path) in ROUTER_IMPORTERS_ALLOWED, f"{_rel(path)} imports a router"
-    assert definers == {"Executor": ["deltr/executor.py"], "PaperRouter": ["deltr/executor.py"], "TestnetRouter": ["deltr/executor.py"]}
+    assert definers == {"Executor": ["deltr/executor.py"], "PaperRouter": ["deltr/executor.py"],
+                        "TestnetRouter": ["deltr/executor.py"], "LiveRouter": ["deltr/executor.py"]}
 
 
 def test_risk_gate_is_imported_only_where_allowed():

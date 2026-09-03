@@ -59,6 +59,17 @@ def test_read_routes(client: TestClient):
     m24 = client.get("/api/market", params={"horizon_h": 24}).json()
     assert m24["edge"]["horizon_h"] == 24
     assert client.get("/api/market", params={"symbol": "DOGEUSDT"}).status_code == 400
+    # the breakeven holding period and the edge-versus-horizon curve ride along (win-plan A2)
+    h = m["horizon"]
+    assert h["verdict"] and h["curve"]["points"] and h["breakeven"]["is_assumption"] is False
+    assert h["horizon_h"] == m["edge"]["horizon_h"] and h["interval_h"] == m["market"]["funding"]["interval_h"]
+    assert h["measured_rate"] == m["edge"]["funding_rate_last"]
+    assert m24["horizon"]["horizon_h"] == 24
+    # an assumed rate is always labelled as one, with the measured rate still on the page
+    ha = client.get("/api/market", params={"assumed_funding_rate": 0.0001}).json()["horizon"]
+    assert ha["assumed_rate"] == 0.0001 and ha["assumption_label"] == "assumption, not a measurement"
+    assert ha["curve_assumed"]["is_assumption"] is True and ha["breakeven_assumed"]["rate_basis"] == "assumed"
+    assert ha["curve"]["is_assumption"] is False and ha["measured_rate"] == h["measured_rate"]
     o = client.get("/api/opportunities", params={"n": 5}).json()
     assert "is_actionable" in o["opportunity"] and len(o["history"]) <= 5
     p = client.get("/api/positions").json()

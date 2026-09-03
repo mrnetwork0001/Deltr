@@ -176,3 +176,47 @@ def test_banner_and_config_never_print_secret_values(tmp_path):
         cfg = resp.json()
         assert key not in resp.text and secret not in resp.text
         assert cfg["secrets_present"] is True and cfg["bsc_rpc_urls"][0] == "https://rpc.example.com/…"
+
+
+def test_settings_repr_and_str_never_print_a_credential(tmp_path):
+    """``repr(settings)`` / ``f"{settings}"`` must not carry the key, the secret, the MCP bearer
+    token, or an RPC URL that has a provider key in its path.
+
+    Settings is held by State, the Executor, both live routers and the on-chain leg, so a single
+    ``log.debug("... %r", self.settings)``, an f-string in an exception, or any debugger /
+    crash-reporter that renders locals would otherwise put the operator's mainnet credentials
+    into stderr, an activity row, a receipt or an API error envelope.  pydantic builds BOTH
+    ``__repr__`` and ``__str__`` from the same field list, so this covers the two of them.
+    """
+    from deltr.config import Settings
+
+    key, secret = "AKIATESTKEYVALUE1234567890abcdefXYZ", "SUPERSECRETVALUE0987654321zyxwvuQRS"
+    token = "bearer-token-value-not-real-1234567890"
+    rpc_key = "RPCPROVIDERKEYVALUE0987654321abcdef"
+    s = Settings(_env_file=None, DELTR_MODE="testnet", BINANCE_API_KEY=key, BINANCE_SECRET_KEY=secret,  # type: ignore[call-arg]
+                 BINANCE_MCP_TOKEN=token, DELTR_STATE_DIR=str(tmp_path),
+                 BSC_RPC_URL="https://rpc.example.com/v1/" + rpc_key)
+    for rendered in (repr(s), str(s), f"{s}", "%s" % (s,), "%r" % (s,)):
+        for leaked in (key, secret, token, rpc_key):
+            assert leaked not in rendered, f"{leaked[:8]}… reached a rendered Settings"
+    # the values are still readable through the attributes: only the printed form drops them
+    assert s.binance_secret_key == secret and s.bsc_rpc_url.endswith(rpc_key)
+
+
+def test_the_mcp_dump_helper_redacts_settings_instead_of_model_dumping_it(tmp_path):
+    """``Settings.model_dump()`` carries the raw credentials by design (it is the raw view).
+
+    ``deltr.mcp.server.dump`` is what turns objects into tool payloads and it special-cases
+    BaseModel, so without the guard a Settings handed to any tool would serialise the key and
+    the secret straight into an LLM's context.
+    """
+    from deltr.config import Settings
+    from deltr.mcp.server import dump
+
+    key, secret = "AKIATESTKEYVALUE1234567890abcdefXYZ", "SUPERSECRETVALUE0987654321zyxwvuQRS"
+    s = Settings(_env_file=None, DELTR_MODE="testnet", BINANCE_API_KEY=key, BINANCE_SECRET_KEY=secret,  # type: ignore[call-arg]
+                 DELTR_STATE_DIR=str(tmp_path))
+    assert secret in str(s.model_dump()), "model_dump is the raw view; the guard below is what matters"
+    out = dump(s)
+    assert key not in str(out) and secret not in str(out)
+    assert out["secrets_present"] is True and out["mode"] == "testnet"
