@@ -1,0 +1,32 @@
+[project]
+name = "deltr"
+version = "1.0.0"
+description = "Deltr - CEX / DEX delta-neutral basis and funding arbitrage agent on Binance Agent OS + MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ifeanyichukwu Onwo (mrnetwork)" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "httpx>=0.27",
+  "mcp>=1.29,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["live: hits real network endpoints (skipped unless DELTR_LIVE_TESTS=1)"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.setuptools]
+packages = ["deltr", "deltr.venues", "deltr.mcp", "deltr.api", "agents"]
