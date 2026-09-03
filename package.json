@@ -2,19 +2,27 @@
   "name": "deltr",
   "version": "1.0.0",
   "private": true,
+  "description": "Deltr \u2014 CEX \u2194 DEX delta-neutral basis/funding arbitrage agent on Binance Agent OS (hosted Binance MCP + Skills Hub) with its own MCP server and a deterministic risk gate",
+  "license": "Apache-2.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "next dev ui -p 3000",
+    "build": "next build ui",
+    "start": "next start ui -p 3000",
+    "lint": "next lint ui",
+    "bridge": "tsx agents/agent_os_bridge.ts",
+    "bridge:serve": "tsx agents/agent_os_bridge.ts serve",
+    "bridge:list": "tsx agents/agent_os_bridge.ts list",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p ui/tsconfig.json --noEmit",
+    "bridge:test": "tsx --test agents/bridge.test.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^0.330.0",
     "next": "14.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "ethers": "^6.11.0",
-    "framer-motion": "^11.0.3",
-    "lucide-react": "^0.330.0"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.11.16",
@@ -23,6 +31,7 @@
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.0",
     "typescript": "^5.3.3"
   }
 }
