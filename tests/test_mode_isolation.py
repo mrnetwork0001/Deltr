@@ -1,12 +1,31 @@
-"""tests/test_mode_isolation.py — PAPER can never reach an order endpoint; TESTNET is the
-only mode with credentials; there is no LIVE mode; the routers refuse the wrong host."""
+"""tests/test_mode_isolation.py — mode isolation across PAPER, TESTNET and LIVE.
+
+The invariant is no longer "there is no LIVE mode"; LIVE exists and places real mainnet
+orders.  What is invariant is the *isolation*:
+
+* PAPER can never reach an order endpoint and never receives credentials;
+* only the mode that owns a venue carries that venue's order host;
+* market DATA is real mainnet everywhere and always keyless;
+* LIVE refuses to build unless every part of the opt-in is present, one named at a time;
+* each router asserts its own host, and inherits no permission from the shared base.
+"""
 from __future__ import annotations
 
 import inspect
+from urllib.parse import urlsplit
 
 import pytest
 
-from deltr.config import HOSTS, MAX_NOTIONAL_BY_MODE, Mode, Settings, load_settings
+from deltr.config import (
+    HOSTS,
+    LIVE_ACK_PHRASE,
+    MAX_NOTIONAL_BY_MODE,
+    ONCHAIN_ACK_PHRASE,
+    ExecutionStyle,
+    Mode,
+    Settings,
+    load_settings,
+)
 from deltr.executor import PaperRouter, TestnetRouter
 from deltr.models import SymbolFilters
 
@@ -14,20 +33,29 @@ FILTERS = SymbolFilters(symbol="BNBUSDT")
 SECRET_WORDS = ("key", "secret", "token", "password", "credential")
 
 
-def test_mode_has_exactly_paper_and_testnet():
-    assert [m.value for m in Mode] == ["paper", "testnet"]
-    assert not hasattr(Mode, "LIVE") and "live" not in {m.value for m in Mode}
+def test_mode_is_exactly_paper_testnet_live():
+    assert [m.value for m in Mode] == ["paper", "testnet", "live"]
 
 
-def test_hosts_table_is_frozen_and_paper_has_no_order_endpoint():
-    assert set(HOSTS) == {Mode.PAPER, Mode.TESTNET}
+def test_hosts_table_is_frozen_and_only_live_carries_a_mainnet_order_host():
+    assert set(HOSTS) == {Mode.PAPER, Mode.TESTNET, Mode.LIVE}
     assert HOSTS[Mode.PAPER]["futures_order_rest"] == ""
     for mode, hosts in HOSTS.items():
         for name, url in hosts.items():
-            assert "fapi.binance.com" not in url and "api.binance.com" not in url, f"{mode}.{name} points at production"
             assert not url or url.startswith("https://"), f"{mode}.{name} must be https"
+            host = urlsplit(url).hostname or ""
+            # mainnet spot REST answers 403 from many networks and is never depended on
+            assert host != "api.binance.com", f"{mode}.{name} uses mainnet spot REST"
+            if name == "futures_order_rest" and mode != Mode.LIVE:
+                assert host != "fapi.binance.com", f"{mode}.{name} points at the mainnet order endpoint"
     assert "testnet" in HOSTS[Mode.TESTNET]["futures_order_rest"]
-    assert MAX_NOTIONAL_BY_MODE[Mode.TESTNET] < MAX_NOTIONAL_BY_MODE[Mode.PAPER]
+    assert HOSTS[Mode.LIVE]["futures_order_rest"] == "https://fapi.binance.com"
+    # market data is real mainnet in EVERY mode
+    for mode in HOSTS:
+        assert HOSTS[mode]["futures_data_rest"] == "https://fapi.binance.com"
+    # the LIVE cap is the smallest by a wide margin and has to be raised deliberately
+    assert MAX_NOTIONAL_BY_MODE[Mode.LIVE] < MAX_NOTIONAL_BY_MODE[Mode.TESTNET] < MAX_NOTIONAL_BY_MODE[Mode.PAPER]
+    assert MAX_NOTIONAL_BY_MODE[Mode.LIVE] == 250.0
 
 
 def test_paper_router_has_no_credential_parameters():
@@ -123,3 +151,113 @@ async def test_testnet_refuses_stress_that_could_touch_a_real_order_even_when_fl
     res = await ctl.apply(StressScenario(kind=StressKind.BASIS_SHOCK, magnitude=25.0))  # book arithmetic only: allowed on a flat book
     assert res.active_label
     await ctl.reset()
+
+
+# --------------------------------------------------------------------------- LIVE opt-in
+LIVE_BASE = dict(_env_file=None, DELTR_MODE="live")
+FULL_LIVE = dict(
+    LIVE_BASE,
+    BINANCE_API_KEY="k-not-real", BINANCE_SECRET_KEY="s-not-real", BINANCE_API_ENV="mainnet",
+    DELTR_LIVE_ACK=LIVE_ACK_PHRASE, DELTR_ONCHAIN_MODE="live", DELTR_ONCHAIN_ACK=ONCHAIN_ACK_PHRASE,
+)
+
+
+def test_live_refuses_to_build_naming_each_missing_requirement_in_turn():
+    """Every part of the opt-in is refused on its own, and the message names it."""
+    steps = [
+        ({"BINANCE_API_KEY": "", "BINANCE_SECRET_KEY": ""}, "requires real Binance mainnet credentials"),
+        ({"BINANCE_API_KEY": "k-not-real", "BINANCE_SECRET_KEY": "s-not-real"}, "BINANCE_API_ENV=mainnet"),
+        ({"BINANCE_API_KEY": "k-not-real", "BINANCE_SECRET_KEY": "s-not-real", "BINANCE_API_ENV": "mainnet"},
+         "DELTR_LIVE_ACK"),
+        ({"BINANCE_API_KEY": "k-not-real", "BINANCE_SECRET_KEY": "s-not-real", "BINANCE_API_ENV": "mainnet",
+          "DELTR_LIVE_ACK": LIVE_ACK_PHRASE}, "DELTR_ONCHAIN_MODE=live"),
+        ({"BINANCE_API_KEY": "k-not-real", "BINANCE_SECRET_KEY": "s-not-real", "BINANCE_API_ENV": "mainnet",
+          "DELTR_LIVE_ACK": LIVE_ACK_PHRASE, "DELTR_ONCHAIN_MODE": "live"}, "DELTR_ONCHAIN_ACK"),
+    ]
+    for extra, named in steps:
+        with pytest.raises(Exception) as exc:
+            load_settings(**dict(LIVE_BASE, **extra))
+        assert named in str(exc.value), f"refusal did not name {named}: {exc.value}"
+    # and with everything set it builds
+    s = load_settings(**FULL_LIVE)
+    assert s.mode == Mode.LIVE and s.live_arming_error() is None
+
+
+def test_a_wrong_live_acknowledgement_is_not_accepted():
+    for bad in ("yes", "true", "i-understand", LIVE_ACK_PHRASE[:-1]):
+        with pytest.raises(Exception, match="DELTR_LIVE_ACK"):
+            load_settings(**dict(FULL_LIVE, DELTR_LIVE_ACK=bad))
+
+
+def test_live_caps_are_small_and_cannot_be_raised_past_the_table():
+    s = load_settings(**FULL_LIVE)
+    assert s.max_notional_usd == 250.0 and s.max_aggregate_usd == 1_000.0
+    tight = load_settings(**dict(FULL_LIVE, DELTR_LIVE_MAX_NOTIONAL_USD=50))
+    assert tight.max_notional_usd == 50.0                      # smaller is honoured
+    loose = load_settings(**dict(FULL_LIVE, DELTR_LIVE_MAX_NOTIONAL_USD=100_000))
+    assert loose.max_notional_usd == 250.0                     # larger is clamped by the table
+    assert loose.risk_limits().max_notional_usd == 250.0       # and that is what the gate enforces
+
+
+def test_live_defaults_to_maker_execution():
+    """Taking the perp leg loses money on the measured funding: posting is the default."""
+    s = load_settings(**FULL_LIVE)
+    assert s.execution_style is ExecutionStyle.MAKER
+    assert s.perp_fee_bps == s.perp_maker_fee_bps
+    assert load_settings(**dict(FULL_LIVE, DELTR_EXECUTION_STYLE="taker")).execution_style is ExecutionStyle.TAKER
+
+
+def test_no_secret_appears_in_a_live_redacted_view_or_repr():
+    s = load_settings(**dict(FULL_LIVE, BINANCE_API_KEY="AAAsecretkeyAAA", BINANCE_SECRET_KEY="BBBsecretBBB"))
+    blob = str(s.redacted()) + repr(s.hosts) + str(s.live_arming_error())
+    assert "AAAsecretkeyAAA" not in blob and "BBBsecretBBB" not in blob
+
+
+def test_futures_client_refuses_mainnet_credentials_without_the_explicit_opt_in():
+    import httpx
+
+    from deltr.venues.binance_futures import FuturesClient
+
+    http = httpx.AsyncClient()
+    with pytest.raises(ValueError, match="allow_mainnet_orders"):
+        FuturesClient(http, "https://fapi.binance.com", api_key="k", secret_key="s")
+    with pytest.raises(ValueError, match="fapi.binance.com"):
+        FuturesClient(http, "https://not-binance.example.com", api_key="k", secret_key="s", allow_mainnet_orders=True)
+    ok = FuturesClient(http, "https://fapi.binance.com", api_key="AAAkeyAAA", secret_key="BBBsecretBBB", allow_mainnet_orders=True)
+    assert ok.has_credentials
+    assert "AAAkeyAAA" not in repr(ok) and "BBBsecretBBB" not in repr(ok)
+    # the keyless mainnet data client is unaffected and stays keyless
+    assert FuturesClient(http, "https://fapi.binance.com").has_credentials is False
+
+
+def test_live_router_asserts_its_own_host_credentials_and_arming():
+    from deltr.executor import LiveRouter
+
+    s = load_settings(**FULL_LIVE)
+
+    class Futures:
+        def __init__(self, base_url: str, creds: bool = True) -> None:
+            self.base_url = base_url
+            self.has_credentials = creds
+
+    with pytest.raises(AssertionError, match="mainnet futures host"):
+        LiveRouter(Futures("https://testnet.binancefuture.com"), object(), s, FILTERS)
+    with pytest.raises(AssertionError, match="credentialed"):
+        LiveRouter(Futures("https://fapi.binance.com", creds=False), object(), s, FILTERS)
+    with pytest.raises(AssertionError, match="on-chain leg"):
+        LiveRouter(Futures("https://fapi.binance.com"), None, s, FILTERS)
+    paper = load_settings(_env_file=None, DELTR_MODE="paper")
+    with pytest.raises(AssertionError, match="refuses to run in PAPER"):
+        LiveRouter(Futures("https://fapi.binance.com"), object(), paper, FILTERS)
+    r = LiveRouter(Futures("https://fapi.binance.com"), object(), s, FILTERS)
+    assert r.mode == Mode.LIVE and r.is_maker
+
+
+def test_the_shared_perp_base_grants_no_host_permission():
+    """TestnetRouter and LiveRouter share order machinery but each asserts its own host."""
+    from deltr.executor import LiveRouter, _PerpLegRouter
+
+    assert issubclass(TestnetRouter, _PerpLegRouter) and issubclass(LiveRouter, _PerpLegRouter)
+    assert not issubclass(LiveRouter, TestnetRouter) and not issubclass(TestnetRouter, LiveRouter)
+    # the base itself has no constructor that could bypass either assertion
+    assert "__init__" not in vars(_PerpLegRouter)
