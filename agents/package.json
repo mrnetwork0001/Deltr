@@ -1,0 +1,5 @@
+{
+  "//": "Marks agents/*.ts as ES modules so `import.meta.url` type-checks under the root NodeNext tsconfig and runs identically under `npx tsx` and Node's native type stripping. Not a publishable package.",
+  "type": "module",
+  "private": true
+}
