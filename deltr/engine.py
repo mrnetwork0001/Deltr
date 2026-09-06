@@ -459,7 +459,13 @@ class Engine:
         self.state.record_venue(h)
         if not h.ok:
             self.start_errors.append(f"{name}: {h.detail}")
-            self.state.emit("log", f"venue {name} unavailable: {h.detail}", level="warn", data={"venue": name})
+            detail = h.detail
+            if any(m in detail.lower() for m in ("nodename nor servname", "getaddrinfo", "name or service not known", "name resolution")):
+                host = str(getattr(client, "base_url", "") or "").replace("https://", "").replace("http://", "").strip("/") or "the venue host"
+                detail = f"DNS: {host} does not resolve via this machine's resolver; set DNS to 1.1.1.1 (works) - no fallback venue"
+                h = h.model_copy(update={"detail": detail[:200]})
+                self.state.record_venue(h)
+            self.state.emit("log", f"venue {name} unavailable: {detail}", level="warn", data={"venue": name})
         else:
             log.info("venue %s ok: %s", name, h.detail)
         return h.ok
