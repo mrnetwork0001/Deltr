@@ -37,6 +37,8 @@ fi
 echo "    port ${PORT} ok"
 IP="$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
 MCP_HOSTS="${IP}:${PORT}"; [ -n "$DOMAIN" ] && MCP_HOSTS="${MCP_HOSTS},${DOMAIN}:*"
+# the Vercel site proxies /api and /mcp here and forwards its own hostname as Host
+CORS_HOST="$(echo "$CORS" | sed -E 's#^https?://##; s#/.*$##')"; [ -n "$CORS_HOST" ] && MCP_HOSTS="${MCP_HOSTS},${CORS_HOST}:*,${CORS_HOST}"
 
 echo "==> python 3.11+ (system python is left alone; a venv is created under /opt/deltr)"
 PY=""
@@ -84,7 +86,13 @@ ENV
 else
   grep -q '^DELTR_CORS_ORIGINS=' /etc/deltr.env || echo "DELTR_CORS_ORIGINS=$CORS" >> /etc/deltr.env
   grep -q '^DELTR_API_PORT=' /etc/deltr.env || echo "DELTR_API_PORT=$PORT" >> /etc/deltr.env
-  grep -q '^DELTR_MCP_ALLOWED_HOSTS=' /etc/deltr.env || echo "DELTR_MCP_ALLOWED_HOSTS=$MCP_HOSTS" >> /etc/deltr.env
+  if grep -q '^DELTR_MCP_ALLOWED_HOSTS=' /etc/deltr.env; then
+    CUR="$(grep -E '^DELTR_MCP_ALLOWED_HOSTS=' /etc/deltr.env | cut -d= -f2-)"
+    for h in $(echo "$MCP_HOSTS" | tr ',' ' '); do case ",$CUR," in *",$h,"*) ;; *) CUR="${CUR:+$CUR,}$h";; esac; done
+    sed -i "s|^DELTR_MCP_ALLOWED_HOSTS=.*|DELTR_MCP_ALLOWED_HOSTS=$CUR|" /etc/deltr.env
+  else
+    echo "DELTR_MCP_ALLOWED_HOSTS=$MCP_HOSTS" >> /etc/deltr.env
+  fi
   echo "    kept existing /etc/deltr.env"
 fi
 
