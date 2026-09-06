@@ -228,6 +228,11 @@ class _HubBase:
 
     def _record_health(self, name: str, ok: bool, age_ms: int, source: DataSource, detail: str = "") -> VenueHealth:
         prev = self.state.venues.get(name)
+        if not ok and any(m in str(detail).lower() for m in ("nodename nor servname", "getaddrinfo", "name or service not known", "name resolution")):
+            # A DNS failure is the one outage the operator can fix in 30 seconds; say so on the health line.
+            host = getattr(getattr(self, "futures_data", None), "base_url", "") if "futures" in name else ""
+            host = host.replace("https://", "").replace("http://", "").strip("/") or "the venue host"
+            detail = f"DNS: {host} does not resolve via this machine's resolver; set DNS to 1.1.1.1 (works) - no fallback venue"
         h = VenueHealth(name=name, ok=ok, age_ms=age_ms, source=source, detail=_redact(detail)[:200])
         self.state.record_venue(h)
         if prev is not None and prev.ok != ok:
