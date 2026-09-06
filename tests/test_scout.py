@@ -266,15 +266,16 @@ async def test_set_min_edge_floor_is_zero_in_paper(paper, filters):
 
 
 async def test_min_edge_floor_outside_paper(testnet, filters):
-    """TESTNET: the floor is the measured round trip (≈ 16.64 bps); a real-order run can never target a loss."""
+    """TESTNET: the floor is 0 bps. Net edge is already net of the round trip, so a real-order run
+    can never target a net loss, but it is not asked to clear the costs twice."""
     st = FakeState()
     scout = ArbitrageScout(st, testnet, filters)
-    assert scout.min_edge_floor() == 20.0  # gate default before the first measurement
+    assert scout.min_edge_floor() == 0.0
     await scout.on_tick(make_ms())
-    floor = scout.min_edge_floor()
-    assert math.isclose(floor, st.edge.roundtrip_cost_bps) and 16.5 < floor < 16.8
-    assert scout.set_min_edge(1.0) == floor
-    assert scout.set_min_edge(0.0) == floor
+    assert scout.min_edge_floor() == 0.0
+    assert scout.set_min_edge(1.0) == 1.0
+    assert scout.set_min_edge(0.0) == 0.0
+    assert scout.set_min_edge(-5.0) == 0.0  # clamped: never a knowingly negative target
     assert scout.set_min_edge(30.0) == 30.0
     assert testnet.risk_limits().min_expected_edge_bps >= 0.0
 

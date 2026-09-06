@@ -205,7 +205,7 @@ class ArbitrageScout:
         return float(e.roundtrip_cost_bps) if e is not None else DEFAULT_ROUNDTRIP_BPS
 
     def min_edge_floor(self) -> float:
-        """0 in PAPER; the measured round trip in TESTNET (a real-order run can never target a loss)."""
+        """0 bps in every mode: a real-order run can never target a net loss (net is already net of costs)."""
         return float(self.settings.min_edge_floor_bps(self.measured_roundtrip_bps()))
 
     def set_min_edge(self, bps: float) -> float:

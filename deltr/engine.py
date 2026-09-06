@@ -173,11 +173,14 @@ def _apply_overrides(settings: Settings, replay_path: Optional[str], min_edge_ov
     if min_edge_override is not None:
         x = float(min_edge_override)
         lo, hi = MIN_EDGE_OVERRIDE_RANGE
-        if settings.mode == Mode.PAPER:
+        if settings.mode == Mode.PAPER or settings.live_test_override:
             if not (lo <= x <= hi):
-                raise ValueError(f"--min-edge-bps {x:g} outside the PAPER range [{lo:g}, {hi:g}]")
+                raise ValueError(f"--min-edge-bps {x:g} outside the override range [{lo:g}, {hi:g}]")
         elif x < 0:
-            raise ValueError("--min-edge-bps must be >= the measured round-trip cost in TESTNET (never negative)")
+            raise ValueError(
+                "--min-edge-bps must be >= 0 in TESTNET/LIVE (never a knowingly negative target). "
+                "A tiny real-money test needs DELTR_LIVE_TEST_ACK and a per-trade cap <= $25."
+            )
         update["min_edge_bps"] = x
     return settings.model_copy(update=update) if update else settings
 
@@ -1167,11 +1170,12 @@ class Engine:
 
         PAPER: the demo override range [-50, 50] bps (floor reported as 0; a negative value
         lets a currently-negative live edge through so the execution path can be shown).
-        TESTNET: the scout clamps to [measured round trip, 50] — a real-order run can never
-        target a loss.
+        TESTNET/LIVE: the scout clamps to [0, 50] — a real-order run can never target a net loss.
+        LIVE with the test override (DELTR_LIVE_TEST_ACK + per-trade cap <= $25): the PAPER
+        range, so the whole real-money path can be exercised for cents on a negative-edge day.
         """
         lo, hi = MIN_EDGE_OVERRIDE_RANGE
-        if self.settings.mode == Mode.PAPER:
+        if self.settings.mode == Mode.PAPER or self.settings.live_test_override:
             effective = min(max(float(bps), lo), hi)
             floor = float(self.scout.min_edge_floor())
             self.state.min_edge_bps = effective

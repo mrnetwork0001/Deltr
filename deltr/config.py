@@ -107,6 +107,11 @@ HOSTS: Dict[Mode, Dict[str, str]] = {
 ONCHAIN_ACK_PHRASE = "i-understand-this-moves-real-funds"
 # The exact acknowledgement an operator must set to arm LIVE trading.
 LIVE_ACK_PHRASE = "i-understand-this-trades-real-money"
+# The LIVE test override: lets the min-edge threshold go negative in LIVE so the whole real-money
+# path can be exercised on a day the edge is negative. Only with this phrase AND a per-trade cap at
+# or below LIVE_TEST_MAX_NOTIONAL_USD, so the knowingly accepted loss is a few cents.
+LIVE_TEST_ACK_PHRASE = "i-accept-a-small-known-loss"
+LIVE_TEST_MAX_NOTIONAL_USD = 25.0
 # The only BINANCE_API_ENV value LIVE accepts.  "prod" stays refused in every mode: it is the
 # spelling that appears in copied-and-pasted configs, so it never silently arms anything.
 LIVE_API_ENV = "mainnet"
@@ -154,6 +159,7 @@ class Settings(BaseSettings):
     # DELTR_LIVE_ACK set to the phrase below.  A fourth and fifth requirement (the wallet
     # CLI installed and signed in) are checked against the CLI in the engine's preflight.
     live_ack: Optional[str] = Field(default=None, alias="DELTR_LIVE_ACK")
+    live_test_ack: Optional[str] = Field(default=None, alias="DELTR_LIVE_TEST_ACK")
     live_max_notional_usd: float = Field(default=250.0, alias="DELTR_LIVE_MAX_NOTIONAL_USD", gt=0)
     live_max_aggregate_usd: float = Field(default=1_000.0, alias="DELTR_LIVE_MAX_AGGREGATE_USD", gt=0)
     execution_style: ExecutionStyle = Field(default=ExecutionStyle.MAKER, alias="DELTR_EXECUTION_STYLE")
@@ -355,6 +361,15 @@ class Settings(BaseSettings):
     def live_ack_ok(self) -> bool:
         return (self.live_ack or "").strip().lower() == LIVE_ACK_PHRASE
 
+    @property
+    def live_test_override(self) -> bool:
+        """LIVE may run with a negative min edge: the test phrase is set AND the per-trade cap is tiny."""
+        return (
+            self.mode == Mode.LIVE
+            and (self.live_test_ack or "").strip().lower() == LIVE_TEST_ACK_PHRASE
+            and float(self.live_max_notional_usd) <= LIVE_TEST_MAX_NOTIONAL_USD
+        )
+
     def live_arming_error(self) -> Optional[str]:
         """Which LIVE requirement is missing, named exactly, or None when the static ones are set.
 
@@ -470,8 +485,15 @@ class Settings(BaseSettings):
         return self.leg_order
 
     def min_edge_floor_bps(self, measured_roundtrip_bps: float) -> float:
-        """Runtime min-edge can never go below this outside PAPER."""
-        return 0.0 if self.mode == Mode.PAPER else float(measured_roundtrip_bps)
+        """Runtime min-edge can never go below this outside PAPER.
+
+        Zero: the net edge is already net of the measured round trip and the assumed exit
+        basis, so "never target a loss" means net >= 0, not net >= round trip (which would
+        count the costs twice and refuse every trade the model calls profitable). PAPER also
+        reports 0 here; its [-50, 50] demo override lives in Engine.set_min_edge.
+        """
+        del measured_roundtrip_bps
+        return 0.0
 
     def mcp_client_snippets(self) -> Dict[str, str]:
         """Ready-to-paste client configs (absolute paths resolved)."""
@@ -533,6 +555,7 @@ class Settings(BaseSettings):
             "execution_style_label": self.execution_style_label,
             "data_source": self.data_source_label,
             "live_ack_present": self.live_ack_ok,
+            "live_test_override": self.live_test_override,
             "live_arming_error": self.live_arming_error(),
             "live_max_notional_usd": self.live_max_notional_usd,
             "live_max_aggregate_usd": self.live_max_aggregate_usd,
@@ -559,7 +582,7 @@ def load_settings(**overrides: object) -> Settings:
 
 __all__ = [
     "Mode", "LegOrder", "ExecutionStyle", "HOSTS", "MAX_NOTIONAL_BY_MODE",
-    "ONCHAIN_ACK_PHRASE", "LIVE_ACK_PHRASE", "LIVE_API_ENV",
+    "ONCHAIN_ACK_PHRASE", "LIVE_ACK_PHRASE", "LIVE_TEST_ACK_PHRASE", "LIVE_TEST_MAX_NOTIONAL_USD", "LIVE_API_ENV",
     "FUTURES_MAINNET_REST", "FUTURES_TESTNET_REST", "SPOT_MIRROR_REST",
     "Settings", "load_settings", "mask_url", "REPO_ROOT", "VERSION",
 ]

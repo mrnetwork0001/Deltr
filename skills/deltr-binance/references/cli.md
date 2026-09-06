@@ -21,7 +21,7 @@ to stderr; no command prints a secret.
 | `--once [--json]` | one tick + scan + explain + propose + gate pre-check, then exit (`--json`: one JSON document on stdout, nothing else) |
 | `--replay PATH` | deterministic replay of a `MarketState/v1` JSONL fixture (REPLAY badge; state under `state/<mode>/replay/`) |
 | `--replay-speed 1.0` | replay speed multiplier |
-| `--min-edge-bps N` | PAPER: [-50, 50] labelled override of the minimum net edge; TESTNET: must be >= the measured round trip |
+| `--min-edge-bps N` | PAPER: [-50, 50] labelled override of the minimum net edge; TESTNET/LIVE: clamped at 0 (never a knowingly negative target) |
 | `--state-dir DIR` | persistence root (default `<repo>/state`, per-mode subfolders) |
 | `--version` | print `deltr <version>` |
 

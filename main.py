@@ -62,7 +62,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--json", action="store_true", help="machine-readable --once output; nothing else on stdout")
     p.add_argument("--replay", default=None, metavar="PATH", help="replay a MarketState/v1 JSONL fixture instead of live feeds")
     p.add_argument("--replay-speed", type=float, default=None, help="replay speed multiplier (default 1.0)")
-    p.add_argument("--min-edge-bps", type=float, default=None, help="PAPER: [-50, 50] demo override of the min net edge; TESTNET/LIVE: >= measured round trip")
+    p.add_argument("--min-edge-bps", type=float, default=None, help="PAPER: [-50, 50] demo override of the min net edge; TESTNET/LIVE: >= 0 (LIVE test override: see DELTR_LIVE_TEST_ACK)")
     p.add_argument("--execution-style", choices=["maker", "taker"], default=None,
                    help="overrides DELTR_EXECUTION_STYLE (default maker: post-only, never crosses the spread)")
     p.add_argument("--state-dir", default=None, help="persistence dir (default <repo>/state; per-mode subfolders)")
@@ -120,8 +120,12 @@ def _armed_line(settings: Settings, status: Any) -> str:
     say so, or a PAPER run reads as risk-free while it can spend real money.
     """
     if getattr(status, "real_funds_armed", False):
-        return (" *** LIVE: REAL FUNDS ARE ARMED. Orders from this process spend real money on "
+        line = (" *** LIVE: REAL FUNDS ARE ARMED. Orders from this process spend real money on "
                 "Binance mainnet and on BNB Smart Chain. ***")
+        if settings.live_test_override:
+            line += (f"\n *** LIVE TEST OVERRIDE: the min edge may be set negative (per-trade cap "
+                     f"${settings.max_notional_usd:,.0f}); a knowingly small loss is accepted for testing. ***")
+        return line
     if settings.mode == Mode.TESTNET:
         line = " TESTNET: real orders on the Binance futures TESTNET. No real funds are at risk on the perp leg."
     else:
