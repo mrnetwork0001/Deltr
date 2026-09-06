@@ -52,6 +52,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--capital", type=float, default=None, help="portfolio capital in USD (overrides DELTR_CAPITAL_USD)")
     p.add_argument("--leverage", type=float, default=None, help="default perp leverage, max 3 (overrides DELTR_DEFAULT_LEVERAGE)")
     p.add_argument("--port", type=int, default=None, help="API/dashboard/MCP port (default 8000)")
+    p.add_argument("--host", default="127.0.0.1",
+                   help="interface to bind (default 127.0.0.1, loopback only; 0.0.0.0 to expose, e.g. behind a VPS firewall)")
     p.add_argument("--no-ui", action="store_true", help="do not serve or spawn the dashboard")
     p.add_argument("--dev-ui", action="store_true", help="spawn `npm run dev` on :3000 (stdout -> stderr) instead of the static ui/out")
     p.add_argument("--mcp", action="store_true", help="add the stdio MCP transport to THIS process (banner and logs go to stderr)")
@@ -219,7 +221,7 @@ async def main(argv: Optional[list[str]] = None) -> int:
 
     # never start a second engine next to a running Deltr (two engines = two books); under --mcp
     # point the client at the running instance instead
-    if not args.once and port_in_use(port):
+    if not args.once and port_in_use(port, args.host):
         hint = (
             f"Point your MCP client at the running instance instead:\n{settings.mcp_client_snippets()['claude_desktop_remote']}"
             if args.mcp else "Pick another --port or stop the other process."
@@ -261,7 +263,7 @@ async def main(argv: Optional[list[str]] = None) -> int:
 
     mcp = build_mcp(engine, engine.activity)
     app = create_app(engine, mcp, engine.activity, ui_dir=None if not args.no_ui else Path("/nonexistent-ui"))
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_config=None, access_log=False,
+    config = uvicorn.Config(app, host=args.host, port=port, log_config=None, access_log=False,
                             log_level="warning" if quiet_stdout else "info", lifespan="on")
     server = uvicorn.Server(config)
     async def _serve() -> None:

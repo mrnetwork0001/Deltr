@@ -1,31 +1,52 @@
 #!/usr/bin/env bash
-# Run ON the VPS (Debian/Ubuntu) after cloning the repo, e.g. from Termius:
+# Run ON the VPS (Debian/Ubuntu) after the tree is at /opt/deltr (git clone, or deploy_vps.sh):
 #
-#   sudo apt-get update && sudo apt-get install -y git
-#   sudo git clone https://github.com/mrnetwork0001/Deltr.git /opt/deltr
 #   cd /opt/deltr && sudo bash scripts/vps_install.sh
 #
-# Optional:  DOMAIN=deltr.example.com  CORS=https://usedeltrapp.vercel.app  sudo -E bash scripts/vps_install.sh
+# Options (environment):
+#   PORT=8000                       the port Deltr listens on (aborts if something else already uses it)
+#   CORS=https://usedeltrapp.vercel.app   allowed browser origin for the API
+#   DOMAIN=deltr.example.com        add an nginx server block + certbot for this name (nginx must already exist)
 #
-# Installs a PUBLIC READ-ONLY showcase: paper mode, no exchange keys, real mainnet data,
-# mutations only with the generated DELTR_API_TOKEN (printed once). Re-run after `git pull`.
+# Designed for a box that ALREADY runs other services. It never touches: existing nginx sites, the
+# default site, port 80/443 (unless DOMAIN is set, and then only its own server block), the system
+# DNS, apt sources / PPAs, the system python, or any unit other than `deltr`. Everything it creates is
+# namespaced: user `deltr`, /opt/deltr/.venv, /var/lib/deltr, /etc/deltr.env, deltr.service.
+#
+# Installs a PUBLIC READ-ONLY showcase: paper mode, no exchange keys, real mainnet data, mutations
+# only with the generated DELTR_API_TOKEN (printed once). Re-run after `git pull`.
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
 cd /opt/deltr
-DOMAIN="${DOMAIN:-}"
+PORT="${PORT:-8000}"
 CORS="${CORS:-https://usedeltrapp.vercel.app}"
+DOMAIN="${DOMAIN:-}"
 
-echo "==> python 3.11+"
+echo "==> preflight"
+if ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${PORT}$"; then
+  if ! systemctl is-active --quiet deltr 2>/dev/null; then
+    echo "    port ${PORT} is already in use by another service on this box:"; ss -ltnp 2>/dev/null | grep -E "[:.]${PORT} " || true
+    echo "    re-run with a free port, e.g.:  sudo PORT=8010 bash scripts/vps_install.sh"; exit 1
+  fi
+  echo "    port ${PORT} is held by the existing deltr service (update run)"
+fi
+if [ -f /etc/deltr.env ]; then
+  OLD_PORT="$(grep -E '^DELTR_API_PORT=' /etc/deltr.env | cut -d= -f2 || true)"
+  if [ -n "$OLD_PORT" ] && [ "$OLD_PORT" != "$PORT" ]; then echo "    /etc/deltr.env has DELTR_API_PORT=$OLD_PORT; using that (edit the file to change it)"; PORT="$OLD_PORT"; fi
+fi
+echo "    port ${PORT} ok"
+
+echo "==> python 3.11+ (system python is left alone; a venv is created under /opt/deltr)"
 PY=""
 for c in python3.12 python3.11 python3; do
   if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)'; then PY="$c"; break; fi
 done
 if [ -z "$PY" ]; then
-  apt-get update -qq && apt-get install -y -qq python3.11 python3.11-venv >/dev/null || {
-    apt-get install -y -qq software-properties-common >/dev/null
-    add-apt-repository -y ppa:deadsnakes/ppa >/dev/null && apt-get update -qq && apt-get install -y -qq python3.11 python3.11-venv >/dev/null; }
-  PY=python3.11
+  echo "    no python >= 3.11 found; trying the distro package (no PPA is added)"
+  apt-get update -qq && apt-get install -y -qq python3.11 python3.11-venv >/dev/null 2>&1 && PY=python3.11 || {
+    echo "    python3.11 is not in this distro's repositories. Install it yourself (e.g. from deadsnakes or pyenv) and re-run."; exit 1; }
 fi
+"$PY" -c 'import venv, ensurepip' 2>/dev/null || { apt-get update -qq && apt-get install -y -qq "${PY}-venv" >/dev/null 2>&1 || true; }
 echo "    using $PY ($($PY --version))"
 [ -d .venv ] || "$PY" -m venv .venv
 .venv/bin/pip install -q --upgrade pip
@@ -38,15 +59,15 @@ mkdir -p /var/lib/deltr && chown -R deltr:deltr /var/lib/deltr /opt/deltr
 echo "==> /etc/deltr.env"
 if [ ! -f /etc/deltr.env ]; then
   TOKEN="$(openssl rand -hex 24)"
-  cat > /etc/deltr.env <<EOF
+  cat > /etc/deltr.env <<ENV
 # Deltr public showcase. PAPER mode, no exchange keys on this box. Mutations need the token.
 DELTR_MODE=paper
 DELTR_PUBLIC_READONLY=1
 DELTR_API_TOKEN=$TOKEN
-DELTR_API_PORT=8000
+DELTR_API_PORT=$PORT
 DELTR_STATE_DIR=/var/lib/deltr
 DELTR_CORS_ORIGINS=$CORS
-EOF
+ENV
   chown root:deltr /etc/deltr.env && chmod 0640 /etc/deltr.env
   echo
   echo "    ############################################################"
@@ -56,43 +77,47 @@ EOF
   echo
 else
   grep -q '^DELTR_CORS_ORIGINS=' /etc/deltr.env || echo "DELTR_CORS_ORIGINS=$CORS" >> /etc/deltr.env
+  grep -q '^DELTR_API_PORT=' /etc/deltr.env || echo "DELTR_API_PORT=$PORT" >> /etc/deltr.env
   echo "    kept existing /etc/deltr.env"
 fi
 
-echo "==> DNS check (Binance hosts must resolve on this box)"
-if ! getent hosts fapi.binance.com >/dev/null; then
-  echo "    fapi.binance.com does not resolve; pointing systemd-resolved at 1.1.1.1"
-  mkdir -p /etc/systemd/resolved.conf.d
-  printf '[Resolve]\nDNS=1.1.1.1 8.8.8.8\n' > /etc/systemd/resolved.conf.d/deltr.conf
-  systemctl restart systemd-resolved 2>/dev/null || true
-  getent hosts fapi.binance.com >/dev/null && echo "    resolved now" || echo "    STILL unresolved: fix /etc/resolv.conf manually"
-else
-  echo "    ok"
-fi
+echo "==> DNS check (report only; this script never changes the box's resolver)"
+if getent hosts fapi.binance.com >/dev/null; then echo "    fapi.binance.com resolves: ok"; else
+  echo "    WARNING: fapi.binance.com does not resolve on this box. Deltr will start but the perp feed"
+  echo "    will read 'DNS ... does not resolve'. Fix the resolver yourself (e.g. add 'DNS=1.1.1.1' in"
+  echo "    /etc/systemd/resolved.conf) only if that is safe for the other services here."; fi
 
-echo "==> systemd"
+echo "==> systemd unit deltr (listens on 0.0.0.0:${PORT})"
 cp deploy/deltr.service /etc/systemd/system/deltr.service
 systemctl daemon-reload
 systemctl enable --now deltr
 systemctl restart deltr
 
-echo "==> nginx"
-command -v nginx >/dev/null 2>&1 || apt-get install -y -qq nginx >/dev/null
-cp deploy/nginx.conf /etc/nginx/sites-available/deltr
-ln -sf /etc/nginx/sites-available/deltr /etc/nginx/sites-enabled/deltr
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+  ufw allow "${PORT}/tcp" >/dev/null && echo "==> ufw: allowed ${PORT}/tcp"
+fi
 
 if [ -n "$DOMAIN" ]; then
-  command -v certbot >/dev/null 2>&1 || apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
-  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email || echo "    certbot failed; site stays on http"
+  echo "==> nginx server block for ${DOMAIN} (existing sites untouched)"
+  command -v nginx >/dev/null 2>&1 || { echo "    nginx is not installed; skipping. Point ${DOMAIN} at port ${PORT} with the web server you already run."; DOMAIN=""; }
+fi
+if [ -n "$DOMAIN" ]; then
+  sed -e "s/server_name _;/server_name ${DOMAIN};/" -e "s#127.0.0.1:8000#127.0.0.1:${PORT}#g" deploy/nginx.conf > /etc/nginx/sites-available/deltr
+  mkdir -p /etc/nginx/sites-enabled && ln -sf /etc/nginx/sites-available/deltr /etc/nginx/sites-enabled/deltr
+  if nginx -t; then systemctl reload nginx; else echo "    nginx config test failed; removing the deltr site"; rm -f /etc/nginx/sites-enabled/deltr; fi
+  if [ -e /etc/nginx/sites-enabled/deltr ]; then
+    command -v certbot >/dev/null 2>&1 || apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email || echo "    certbot failed; site stays on http"
+  fi
 fi
 
 echo "==> verify"
 sleep 4
-echo -n "    health: "; curl -s http://127.0.0.1:8000/api/health || echo "(no answer yet; check: journalctl -u deltr -n 50)"; echo
-echo -n "    token-less mutation (expect 403): "; curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8000/api/kill -H 'content-type: application/json' -d '{"on":true}'
+echo -n "    health: "; curl -s "http://127.0.0.1:${PORT}/api/health" || echo "(no answer yet; check: journalctl -u deltr -n 50)"; echo
+echo -n "    token-less mutation (expect 403): "; curl -s -o /dev/null -w '%{http_code}\n' -X POST "http://127.0.0.1:${PORT}/api/kill" -H 'content-type: application/json' -d '{"on":true}'
 systemctl --no-pager --lines=3 status deltr | tail -4
 echo
-echo "==> open  http://$(curl -s -4 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')/   (landing)   and /app/ (dashboard)"
+IP="$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
+echo "==> open  http://${IP}:${PORT}/   (landing)   http://${IP}:${PORT}/app/   (dashboard)   http://${IP}:${PORT}/mcp   (MCP)"
+echo "    Vercel: set NEXT_PUBLIC_APP_URL=http://${IP}:${PORT}/app/ and redeploy"
 echo "    logs: journalctl -u deltr -f"

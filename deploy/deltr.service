@@ -8,10 +8,11 @@ Type=simple
 User=deltr
 Group=deltr
 WorkingDirectory=/opt/deltr
-# Secrets and the mutation token live in /etc/deltr.env (root:deltr 0640), never in the unit.
+# Secrets, the port and the mutation token live in /etc/deltr.env (root:deltr 0640), never in the unit.
 EnvironmentFile=/etc/deltr.env
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/deltr/.venv/bin/python /opt/deltr/main.py --port 8000 --state-dir /var/lib/deltr
+# Binds all interfaces on DELTR_API_PORT so the box's existing web server is not involved.
+ExecStart=/opt/deltr/.venv/bin/python /opt/deltr/main.py --host 0.0.0.0 --port ${DELTR_API_PORT} --state-dir /var/lib/deltr
 Restart=always
 RestartSec=3
 # hardening: the showcase never needs to write outside its state dir
