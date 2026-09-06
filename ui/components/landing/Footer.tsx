@@ -1,8 +1,8 @@
-// Footer: brand block on the left (mark, wordmark, mono tagline, blurb, GitHub / X),
+// Footer: brand block on the left (the header lockup, blurb, GitHub / X),
 // three mono link columns on the right.
 import Link from "next/link";
 import { Github, Twitter } from "lucide-react";
-import { FOOTER_BLURB, FOOTER_COLUMNS, FOOTER_TAGLINE, REPO_URL, X_URL } from "@/lib/landing";
+import { FOOTER_BLURB, FOOTER_COLUMNS, REPO_URL, X_URL } from "@/lib/landing";
 
 function FooterLink({ label, href }: { label: string; href: string }) {
   const cls = "font-mono text-[15px] text-gray-300 transition hover:text-bnb";
@@ -18,14 +18,9 @@ export default function Footer() {
         <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-8">
           {/* brand block */}
           <div className="max-w-md">
-            <a href="#top" className="inline-flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-bnb/50" aria-hidden>
-                <span className="h-3.5 w-3.5 rounded-sm bg-bnb" />
-              </span>
-              <span>
-                <span className="block font-mono text-lg font-bold uppercase tracking-[0.28em] text-gray-50">Deltr</span>
-                <span className="block font-mono text-[10px] uppercase tracking-[0.3em] text-bnb/80">{FOOTER_TAGLINE}</span>
-              </span>
+            <a href="#top" className="inline-block" aria-label="Deltr, back to top">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/deltr-header.png" alt="Deltr, delta-neutral by construction" className="h-14 w-auto sm:h-16" />
             </a>
             <p className="mt-8 text-[15px] leading-relaxed text-gray-400">{FOOTER_BLURB}</p>
             <div className="mt-8 flex items-center gap-4">

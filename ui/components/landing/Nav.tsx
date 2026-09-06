@@ -7,9 +7,9 @@ export default function Nav() {
   return (
     <nav className="sticky top-0 z-40 border-b border-ink-700/80 bg-ink-950/90 backdrop-blur" aria-label="Sections">
       <div className="mx-auto flex h-14 max-w-[calc(50vw+36rem)] items-center gap-3 px-4 sm:px-6">
-        <a href="#top" className="flex items-center gap-2 text-base font-bold tracking-tight text-bnb">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-bnb" aria-hidden />
-          Deltr
+        <a href="#top" className="flex items-center" aria-label="Deltr, back to top">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/deltr-header.png" alt="Deltr, delta-neutral by construction" className="h-9 w-auto" />
         </a>
         <ul className="ml-auto hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map((l) => (
