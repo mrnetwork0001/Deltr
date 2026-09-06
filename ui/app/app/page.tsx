@@ -27,8 +27,10 @@ function mockAllowed(): boolean {
   return devOrigin && !process.env.NEXT_PUBLIC_API;
 }
 
-// The static export on Vercel has no engine behind it. When NEXT_PUBLIC_APP_URL names the live
-// dashboard elsewhere (the VPS), /app/ forwards there; `?stay=1` keeps this copy open for debugging.
+// The static export on Vercel reaches the engine through vercel.json rewrites (/api, /mcp proxied to
+// the VPS; WebSockets are not proxied, so the 1 Hz poll fallback carries the stream). Only if that
+// same-origin path is dead AND NEXT_PUBLIC_APP_URL names the live dashboard elsewhere does /app/
+// forward there; `?stay=1` keeps this copy open for debugging.
 const LIVE_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "";
 function liveElsewhere(): string | null {
   if (typeof window === "undefined" || !LIVE_APP_URL || !/^https?:\/\//.test(LIVE_APP_URL)) return null;
@@ -62,11 +64,6 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    const live = liveElsewhere();
-    if (live && !new URLSearchParams(window.location.search).has("stay")) {
-      window.location.replace(live);
-      return;
-    }
     const h = openStream({
       onSnapshot: (s) => {
         lastLiveAt.current = Date.now();
@@ -81,6 +78,16 @@ export default function Page() {
     });
     return () => h.stop();
   }, [loadMock]);
+
+  // Forward to the live dashboard only when nothing has answered here for 6 s.
+  useEffect(() => {
+    const live = liveElsewhere();
+    if (!live || transport !== "down" || new URLSearchParams(window.location.search).has("stay")) return;
+    const t = setTimeout(() => {
+      if (!lastLiveAt.current) window.location.replace(live);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [transport]);
 
   const refresh = useCallback(async () => {
     try {

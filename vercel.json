@@ -5,5 +5,23 @@
   "outputDirectory": "ui/out",
   "installCommand": "npm ci",
   "cleanUrls": true,
-  "trailingSlash": true
+  "trailingSlash": true,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://38.49.213.208:8000/api/:path*"
+    },
+    {
+      "source": "/mcp",
+      "destination": "http://38.49.213.208:8000/mcp"
+    },
+    {
+      "source": "/mcp/:path*",
+      "destination": "http://38.49.213.208:8000/mcp/:path*"
+    },
+    {
+      "source": "/ws/:path*",
+      "destination": "http://38.49.213.208:8000/ws/:path*"
+    }
+  ]
 }
