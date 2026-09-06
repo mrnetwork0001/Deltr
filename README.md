@@ -126,7 +126,7 @@ one-liners. If :8000 is taken, add `--port 8765` (3000/3001 are reserved for `np
 | `.venv/bin/python main.py --execution-style taker` | LIVE/TESTNET: cross the spread instead of posting. The measured economics say do not |
 | `.venv/bin/python main.py --auto` | PAPER only: auto-execute gate-approved actionable opportunities |
 | `.venv/bin/python main.py --host 0.0.0.0 --port 8000` | bind all interfaces (the VPS showcase); default is loopback only |
-| `.venv/bin/python -m pytest -q` | 671 offline, deterministic tests in about 8 s |
+| `.venv/bin/python -m pytest -q` | 675 offline, deterministic tests in about 8 s |
 
 Node is only needed for the bridge (`npx tsx agents/agent_os_bridge.ts ...`) and `npm run dev`; the
 dashboard is a static export in `ui/out/` served by FastAPI. Python 3.11+ (verified on 3.11, 3.12 and 3.14).
@@ -374,6 +374,8 @@ address and never a secret:
 | Reversal | real, in both directions: a filled on-chain leg is reversed by the opposite swap. A reversal that fails books a naked one-legged position under the stop monitor and engages the kill switch |
 | Gate | unchanged and in front of every order, exactly as in PAPER and TESTNET. The LIVE aggregate cap sits *after* the gate and can only subtract from what it approved |
 | Caps | $250 per trade (a ceiling: `DELTR_LIVE_MAX_NOTIONAL_USD` can only lower it), $1,000 aggregate |
+| Min edge | floor 0 bps outside PAPER: net edge is already net of the round trip, so a real-order run never targets a net loss but is not asked to clear the costs twice. Today's live edge is negative, so LIVE mostly declines |
+| Test override | `DELTR_LIVE_TEST_ACK=i-accept-a-small-known-loss` lets the min edge go negative in LIVE **only while the per-trade cap is at most $25**, so one tiny real hedge can exercise the whole path on a negative-edge day for a loss of cents. The banner and the header say LIVE TEST OVERRIDE while it is on |
 | Market data | the same keyless mainnet client PAPER and TESTNET use. A credentialed client never polls a public endpoint in any mode |
 
 ## Public read-only deployment
@@ -396,13 +398,13 @@ to the two engines, so the browser only ever talks to one https origin. Step by 
 ## Tests and the measured benchmark
 
 ```bash
-.venv/bin/python -m pytest -q                                   # 671 passed, 9 skipped in about 8 s (offline)
+.venv/bin/python -m pytest -q                                   # 675 passed, 9 skipped in about 8 s (offline)
 .venv/bin/python -m pytest -q -s tests/test_risk_gate.py        # prints the gate median measured here
 .venv/bin/python -c "import risk_gate; print(risk_gate.benchmark())"   # (median_us, p99_us, amortised_us)
 npm run typecheck && npm run bridge:test                        # TypeScript bridge (Node only)
 ```
 
-Counts are whatever the suite prints: 671 passed, 9 skipped on 2026-09-06 with the command above.
+Counts are whatever the suite prints: 675 passed, 9 skipped on 2026-09-06 with the command above.
 Across repeated runs on this Apple M-series laptop the gate median lands between **1.5 and 2.5 µs**
 (p99 between 2.0 and 2.9 µs); the number in your banner is the one that counts, and the test asserts
 only that it stays under 5 µs so slower machines stay green. The suite is offline and deterministic:

@@ -111,12 +111,21 @@ DELTR_ONCHAIN_MODE=live
 # DELTR_ONCHAIN_ACK=i-understand-this-moves-real-funds
 DELTR_BAW_BIN=$BAW
 
+# 4. FILL: the real bankroll this engine manages (Futures margin + wallet funds), so the gate's
+#    2 % risk and 90 % capacity checks size against what is actually there
+DELTR_CAPITAL_USD=25
+
 # caps (small on purpose; the per-trade cap can only be lowered)
-DELTR_LIVE_MAX_NOTIONAL_USD=250
-DELTR_LIVE_MAX_AGGREGATE_USD=1000
-DELTR_ONCHAIN_MAX_NOTIONAL_USD=250
-DELTR_ONCHAIN_MAX_AGGREGATE_USD=1000
+DELTR_LIVE_MAX_NOTIONAL_USD=25
+DELTR_LIVE_MAX_AGGREGATE_USD=50
+DELTR_ONCHAIN_MAX_NOTIONAL_USD=25
+DELTR_ONCHAIN_MAX_AGGREGATE_USD=50
 DELTR_EXECUTION_STYLE=maker
+
+# 5. OPTIONAL, for a first real-money test on a day the edge is negative: lets the min edge be set
+#    negative (e.g. deltr_set_min_edge -20) so one tiny hedge goes through. Works only while
+#    DELTR_LIVE_MAX_NOTIONAL_USD <= 25; the knowingly accepted loss is a few cents. Remove afterwards.
+# DELTR_LIVE_TEST_ACK=i-accept-a-small-known-loss
 ENV
   fi
   chown root:deltr "$ENVF" && chmod 0640 "$ENVF"

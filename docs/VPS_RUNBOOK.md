@@ -51,8 +51,23 @@ The installer writes `/etc/deltr-live.env` with `DELTR_MODE=live` and blank cred
    file is armed. The engine's preflight re-checks keys, acknowledgements and the wallet session before
    the first tick and refuses to start otherwise (`journalctl -u deltr-live -n 50` names what is missing).
 
-Caps: $250 per trade, $1,000 aggregate, on-chain $250 per request. Fund the Futures wallet with about
-$90 USDT margin and the Agentic Wallet with a little BNB and USDT for one $200 trade at 2x.
+### A first real-money test for about $20
+
+Binance's minimum futures order is 5 USDT notional and the BNB lot step is 0.01 BNB (about $8), so
+$5 is below the exchange minimum; about $20 across both venues is the floor:
+
+| Where | Amount | Why |
+|---|---|---|
+| Futures wallet (USDT) | about $10 | margin for 0.01 BNB at 2x (about $4) plus fees and buffer |
+| Agentic Wallet on BNB Chain | about $9 USDT + $1 BNB | the DEX leg buys 0.01 BNB; BNB pays gas |
+
+In `/etc/deltr-live.env` set `DELTR_CAPITAL_USD` to what you actually deposited (the template says
+25) so the gate's 2 % risk and 90 % capacity checks size against real money, keep the caps at the
+template's $25 per trade, and, only for the test, uncomment `DELTR_LIVE_TEST_ACK`. Then, from a host
+with the token: `deltr_set_min_edge -20`, `deltr_prompt "Hedge $20"`, `deltr_execute_hedge`. The
+receipt carries the Binance order id and the wallet transaction hash. `deltr_unwind all` closes it.
+Remove `DELTR_LIVE_TEST_ACK` afterwards and restart. Expect the trade to lose a few cents: that is the
+measured edge, and the point of the override is to prove the path, not to make money.
 
 ## What the installer does (and does not touch)
 
