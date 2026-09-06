@@ -14,8 +14,6 @@ export const NAV_LINKS: { id: string; label: string }[] = [
   { id: "safety", label: "Safety" },
   { id: "connect", label: "Connect" },
   { id: "agent-os", label: "Agent OS" },
-  { id: "demo", label: "Demo" },
-  { id: "hackathon", label: "Hackathon" },
   { id: "faq", label: "FAQ" },
 ];
 
@@ -284,57 +282,7 @@ export const UPSTREAM_KINDS: { kind: string; meaning: string }[] = [
   { kind: "none", meaning: "Neither upstream could be reached; the reason is reported." },
 ];
 
-export interface DemoBeat {
-  time: string;
-  title: string;
-  onScreen: string;
-  voice: string;
-}
 
-export const DEMO_BEATS: DemoBeat[] = [
-  {
-    time: "0:00",
-    title: "Hook",
-    onScreen: "Dashboard live: mode PAPER, three venue dots with source labels, equity $10 000, drawdown 0 %, gate median (measured).",
-    voice: "Deltr never takes a directional bet, never talks to production, and no order reaches Binance without a deterministic, zero-LLM risk gate.",
-  },
-  {
-    time: "0:15",
-    title: "One command",
-    onScreen: "python main.py. Banner with mode, hosts, secrets: absent, dashboard + MCP URLs. EdgeWaterfall shows the honest numbers: basis, round trip, funding, net, not actionable.",
-    voice: "Real PancakeSwap and Binance data, zero secrets. A naive bot sees a spread; Deltr prices the full round trip.",
-  },
-  {
-    time: "0:35",
-    title: "Prompt to hedge",
-    onScreen: "deltr_prompt sizes 4.85 BNB at 2x, precheck APPROVED with 19 green rows. deltr_execute_hedge(plan_id). TradeTrace: intent, scan, plan, gate, dex_fill, cex_fill, position, receipt sha256. Delta 0.00 BNB.",
-    voice: "If the min-edge override chip is on, say so: otherwise the gate would have vetoed on NEGATIVE_EDGE.",
-  },
-  {
-    time: "1:15",
-    title: "The gate says no",
-    onScreen: "$50,000 at 10x: VETO LEVERAGE 10.0 > 3.0 x. $50,000 at 3x: VETO CAPITAL_RISK $437 > $200. Kill switch on: VETO KILL_SWITCH.",
-    voice: "Pure Python, no model in the loop, every veto has a number.",
-  },
-  {
-    time: "1:45",
-    title: "Stress, halt, unwind",
-    onScreen: "Basis shock 130 bps (SIMULATED chip): stop fires, auto-unwind receipt. Equity shock 3.5 %: HALTED. Hedge $2,000: VETO HALTED_DRAWDOWN. Reset refused until recovered.",
-    voice: "The badge says simulated because the market feed was never touched.",
-  },
-  {
-    time: "2:20",
-    title: "Agent OS, two MCPs",
-    onScreen: "npx skills add, then bash scripts/deltr.sh once --json (edge, plan, precheck JSON). bridge upstream-status (official / shim / none), list (18 tools), route (JSON-RPC receipt). SKILL.md frontmatter.",
-    voice: "Deltr is itself an MCP server, discovers the Binance MCP upstream, and ships as a Skills Hub skill.",
-  },
-  {
-    time: "2:45",
-    title: "Close",
-    onScreen: "pytest -q -s green with the printed gate benchmark; README; repo URL.",
-    voice: "Delta-neutral by construction, deterministic by design.",
-  },
-];
 
 export const DEMO_PROMPTS: string[] = [
   "Rebalance $5,000 USDC into delta-neutral BNB arbitrage.",
@@ -346,23 +294,8 @@ export const DEMO_PROMPTS: string[] = [
   "Reset the halt.",
 ];
 
-export const TRACK_A_CATEGORIES: { name: string; how: string }[] = [
-  { name: "Trading workflows", how: "Natural-language prompt to a sized, gated, paired hedge with a hashed receipt; two-phase propose / execute through MCP." },
-  { name: "Onchain workflows", how: "PancakeSwap V3 on BNB Chain quoted on-chain through slot0 + QuoterV2 eth_call, with gas priced into the round trip." },
-  { name: "Data & Analysis", how: "Live DEX vs perp spread, funding countdown, and the horizon-based edge breakdown with provenance and feed ages on every number." },
-];
 
-export const TRACK_B = {
-  title: "Connect your MCPs and trade (task reward, not a judged track)",
-  body: "The second hackathon item is a first-come task reward of 4 USDC to the first 10,000 users who complete a spot, a futures and a margin-or-convert trade through the Binance MCP server; you complete it yourself in a supported host. Deltr's bridge attempts that upstream first and reports what it actually reached (official, shim or none); the official endpoint has never been exercised from our build machine, so the bridge reports the testnet-backed shim here. Deltr is itself an MCP server any host can route through, with the deterministic gate in front of every order.",
-};
 
-export const HACKATHON_META = {
-  name: "Binance Agent OS Mini Hackathon",
-  trackA: "Track A: Build an AI agent with Agent OS",
-  trackB: "Connect your MCPs and trade (4 USDC task reward, first 10,000 users)",
-  deadline: "September 8, 2026, 23:59 UTC",
-};
 
 export const FAQ: { q: string; a: string }[] = [
   {
@@ -395,11 +328,44 @@ export const FAQ: { q: string; a: string }[] = [
   },
 ];
 
-export const FOOTER_LINKS: { label: string; href: string }[] = [
-  { label: "GitHub", href: REPO_URL },
-  { label: "Architecture", href: `${REPO_URL}/blob/main/docs/ARCHITECTURE.md` },
-  { label: "Safety model", href: `${REPO_URL}/blob/main/docs/SAFETY_MODEL.md` },
-  { label: "MCP setup", href: `${REPO_URL}/blob/main/docs/MCP_SETUP.md` },
-  { label: "Demo script", href: `${REPO_URL}/blob/main/docs/DEMO_SCRIPT.md` },
-  { label: "Dashboard", href: DASHBOARD_PATH },
+export type FooterLink = { label: string; href: string };
+export type FooterColumn = { heading: string; links: FooterLink[] };
+
+// Footer: brand block + three link columns (product / resources / ecosystem).
+export const FOOTER_COLUMNS: FooterColumn[] = [
+  {
+    heading: "Product",
+    links: [
+      { label: "Launch app", href: DASHBOARD_PATH },
+      { label: "How it works", href: "#how" },
+      { label: "Architecture", href: "#architecture" },
+      { label: "The edge, honestly", href: "#edge" },
+      { label: "Safety by construction", href: "#safety" },
+    ],
+  },
+  {
+    heading: "Resources",
+    links: [
+      { label: "README", href: REPO_URL },
+      { label: "MCP setup", href: `${REPO_URL}/blob/main/docs/MCP_SETUP.md` },
+      { label: "Safety model", href: `${REPO_URL}/blob/main/docs/SAFETY_MODEL.md` },
+      { label: "Strategy evidence, 500 days of funding", href: `${REPO_URL}/blob/main/docs/STRATEGY_EVIDENCE.md` },
+      { label: "670 tests", href: `${REPO_URL}/tree/main/tests` },
+    ],
+  },
+  {
+    heading: "Ecosystem",
+    links: [
+      { label: "Binance Agent OS", href: "https://www.binance.com/en/agent-os" },
+      { label: "Binance MCP server", href: "https://developers.binance.com/en/docs/agent-native/mcp-server/agentic" },
+      { label: "Binance Skills Hub", href: "https://github.com/binance/binance-skills-hub" },
+      { label: "PancakeSwap V3", href: "https://docs.pancakeswap.finance/" },
+      { label: "Model Context Protocol", href: "https://modelcontextprotocol.io/" },
+    ],
+  },
 ];
+
+export const FOOTER_TAGLINE = "Delta-neutral by construction";
+export const FOOTER_BLURB =
+  "A CEX / DEX basis and funding agent on Binance Agent OS. Long PancakeSwap V3 on BNB Chain, short the Binance perp, every order through a deterministic gate. The same engine runs the dashboard, the MCP tools and the CLI.";
+export const X_URL = "https://x.com/mrnetwork0001";
