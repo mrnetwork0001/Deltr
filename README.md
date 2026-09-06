@@ -185,6 +185,7 @@ Binance upstream: [docs/MCP_SETUP.md](docs/MCP_SETUP.md).
 | 6 | *Hedge $2,000.* (after a SIMULATED equity shock) | VETO `HALTED_DRAWDOWN` "350 > 300 bps"; *Reset the halt* is refused (`HALT_NOT_CLEARABLE`) until the book recovers. |
 
 Second-by-second script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Public read-only VPS showcase, step by step: [docs/VPS_RUNBOOK.md](docs/VPS_RUNBOOK.md).
 
 ## Safety model (short version)
 

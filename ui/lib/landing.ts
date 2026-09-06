@@ -4,7 +4,10 @@
 
 export const REPO_URL = "https://github.com/mrnetwork0001/Deltr";
 export const MCP_URL = "http://127.0.0.1:8000/mcp";
-export const DASHBOARD_PATH = "/app/";
+// Where "Launch app" goes. Same-origin /app/ when the export is served by FastAPI (VPS,
+// localhost); NEXT_PUBLIC_APP_URL on the static Vercel deploy, which has no backend of its
+// own, so the button opens the dashboard on the VPS.
+export const DASHBOARD_PATH = process.env.NEXT_PUBLIC_APP_URL || "/app/";
 export const BINANCE_MCP_URL = "https://agent.binance.com/mcp/agentic";
 
 export const NAV_LINKS: { id: string; label: string }[] = [

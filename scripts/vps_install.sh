@@ -5,7 +5,7 @@
 #   sudo git clone https://github.com/mrnetwork0001/Deltr.git /opt/deltr
 #   cd /opt/deltr && sudo bash scripts/vps_install.sh
 #
-# Optional:  DOMAIN=deltr.example.com  CORS=https://deltrapp.vercel.app  sudo -E bash scripts/vps_install.sh
+# Optional:  DOMAIN=deltr.example.com  CORS=https://usedeltrapp.vercel.app  sudo -E bash scripts/vps_install.sh
 #
 # Installs a PUBLIC READ-ONLY showcase: paper mode, no exchange keys, real mainnet data,
 # mutations only with the generated DELTR_API_TOKEN (printed once). Re-run after `git pull`.
@@ -13,7 +13,7 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
 cd /opt/deltr
 DOMAIN="${DOMAIN:-}"
-CORS="${CORS:-https://deltrapp.vercel.app}"
+CORS="${CORS:-https://usedeltrapp.vercel.app}"
 
 echo "==> python 3.11+"
 PY=""

@@ -3,7 +3,6 @@
 // user actually says, two outlined actions and a mono caption. Right: a continuously
 // animating screen (HeroScene). Below: a four-tile stats strip with honest numbers.
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { DASHBOARD_PATH } from "@/lib/landing";
 import HeroScene from "./HeroScene";
 
@@ -85,12 +84,12 @@ export default function Hero() {
             </p>
 
             <div className="hero-in mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
+              <a
                 href={DASHBOARD_PATH}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-bnb px-6 py-3.5 text-base font-bold text-ink-950 shadow-[0_0_0_1px_rgba(240,185,11,0.5),0_8px_30px_rgba(240,185,11,0.18)] transition hover:bg-bnb-dim"
               >
                 Launch App <span aria-hidden>→</span>
-              </Link>
+              </a>
               <a
                 href="#safety"
                 className="inline-flex items-center justify-center rounded-lg border border-ink-700 bg-ink-900 px-5 py-3.5 text-base font-semibold text-gray-200 transition hover:border-gray-500"

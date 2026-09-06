@@ -53,3 +53,45 @@ Shoot from this script with a stopwatch. Two takes. Nothing in the video is fake
 ## After recording
 
 Upload (YouTube unlisted or X native), paste the link into `README.md` and the quote-repost, and run `docs/SUBMISSION_CHECKLIST.md` top to bottom.
+
+## Live segment (paper take first, then this)
+
+Record the paper take in full, then restart the engine LIVE for a short second segment. Keep it under
+30 s: the point is proof of life, not a second demo. Nothing here is faked: the header turns red,
+the banner says REAL FUNDS ARE ARMED, and the fill carries a real Binance order id.
+
+### Before the day (your side)
+
+1. `.env`: `BINANCE_SECRET_KEY` filled (the key is already there), Futures permission enabled on the key.
+2. `baw auth signin` once, approve on the phone, then `baw wallet status --json` shows a session.
+3. The Binance Agentic Wallet holds a little BNB and USDT on BNB Smart Chain (a $250 trade at 2x
+   needs about $170 of DEX-side funds plus gas); the Futures wallet holds about $90 USDT margin.
+4. Mac DNS on 1.1.1.1, so the engine reaches `fapi.binance.com`.
+
+### Arming (30 s before the segment)
+
+In `.env` set, exactly:
+
+```
+DELTR_MODE=live
+BINANCE_API_ENV=mainnet
+DELTR_LIVE_ACK=i-understand-this-trades-real-money
+DELTR_ONCHAIN_MODE=live
+DELTR_ONCHAIN_ACK=i-understand-this-moves-real-funds
+```
+
+Caps stay at the defaults (`DELTR_LIVE_MAX_NOTIONAL_USD=250`, aggregate 1 000, on-chain 250 / 1 000).
+Start `python main.py`. The preflight names the first thing missing if anything is; when it passes the
+banner prints `*** LIVE: REAL FUNDS ARE ARMED ***`, the header chip reads `LIVE` and `secrets present`.
+
+### On camera
+
+| Time | Do / say |
+|---|---|
+| 0:00–0:08 | Show the banner and the red `LIVE` chip. *"Same engine, same gate, now with real money and a $250 cap it cannot raise from a prompt."* |
+| 0:08–0:22 | Claude: **"Hedge $200."** → `deltr_prompt` → plan (about 0.3 BNB at 2x) → precheck. If the live edge is negative the gate vetoes on `NEGATIVE_EDGE`: keep that, it is the honest outcome, and say *"it refuses to lose money on camera"*. If it approves: **"Execute that plan."** → maker order posted; the receipt shows the Binance order id and the wallet transaction hash. |
+| 0:22–0:30 | **"Unwind all."** (reduce-only, if a position opened). Close on the receipt SHA-256. |
+
+### After
+
+Set `DELTR_MODE=paper`, `BINANCE_API_ENV=testnet`, comment the two ACK lines out again, `DELTR_ONCHAIN_MODE=off`.
