@@ -1,8 +1,11 @@
-# VPS runbook: the public read-only showcase
+# VPS runbook: the public read-only showcases (PAPER and LIVE)
 
-Goal: judges open the landing page on Vercel, press **Launch App**, and land on a live Deltr
-dashboard served from the VPS in PAPER mode with real mainnet data. No exchange keys on the box;
-every mutation needs the `DELTR_API_TOKEN` the installer prints once.
+Goal: judges open <https://usedeltrapp.vercel.app>, press **Launch App**, and get a live dashboard
+with a **PAPER / LIVE** switch in the header. Each engine is its own process on the VPS, both public
+read-only: anyone can read, every mutation needs that engine's `DELTR_API_TOKEN` (printed once).
+Vercel proxies `/api`, `/mcp` to the PAPER engine (port 8000) and `/live/api`, `/live/mcp` to the LIVE
+engine (port 8001); the switch only changes which engine the page reads. Nothing on the page, and no
+MCP tool, can change a mode.
 
 Requirements: Ubuntu 22.04/24.04 or Debian 12, 1 vCPU, 1 GB RAM, port 22 plus the chosen app port open
 (default 8000). Commands are typed on the VPS in Termius unless marked "on the Mac".
@@ -25,10 +28,36 @@ scripts/deploy_vps.sh user@VPS_IP
 
 It rsyncs the tree to `/opt/deltr` (never `.env`, never `state/`) and runs the same installer.
 
+## The LIVE instance (real money, read-only to the public)
+
+Install it disarmed, then arm it yourself on the box:
+
+```bash
+cd /opt/deltr && INSTANCE=live PORT=8001 bash scripts/vps_install.sh
+```
+
+The installer writes `/etc/deltr-live.env` with `DELTR_MODE=live` and blank credentials, installs
+`deltr-live.service`, and does **not** start it. To arm:
+
+1. `nano /etc/deltr-live.env`: fill `BINANCE_API_KEY` / `BINANCE_SECRET_KEY` (mainnet key, Reading +
+   Futures, no withdrawals, IP-restricted to the VPS), uncomment `DELTR_LIVE_ACK` and `DELTR_ONCHAIN_ACK`.
+2. Wallet CLI on the box, signed in **as the service user** so the session lives in its state dir:
+   ```bash
+   command -v baw || npm install -g @binance/agentic-wallet
+   sudo -u deltr HOME=/var/lib/deltr-live baw auth signin        # scan the QR in the Binance app
+   sudo -u deltr HOME=/var/lib/deltr-live baw wallet status --json
+   ```
+3. Re-run `INSTANCE=live PORT=8001 bash scripts/vps_install.sh`; it starts the service once the env
+   file is armed. The engine's preflight re-checks keys, acknowledgements and the wallet session before
+   the first tick and refuses to start otherwise (`journalctl -u deltr-live -n 50` names what is missing).
+
+Caps: $250 per trade, $1,000 aggregate, on-chain $250 per request. Fund the Futures wallet with about
+$90 USDT margin and the Agentic Wallet with a little BNB and USDT for one $200 trade at 2x.
+
 ## What the installer does (and does not touch)
 
 Built for a box that already runs other services. It creates only namespaced things: user `deltr`,
-`/opt/deltr/.venv`, `/var/lib/deltr`, `/etc/deltr.env`, `deltr.service`. It never touches existing
+`/opt/deltr/.venv`, and per instance `/var/lib/<name>`, `/etc/<name>.env`, `<name>.service` (`deltr`, `deltr-live`). It never touches existing
 nginx sites, port 80/443, the system DNS, apt sources, the system python or any other unit.
 
 * Preflight: aborts if the chosen `PORT` (default 8000) is already in use; pick another with
@@ -42,7 +71,16 @@ nginx sites, port 80/443, the system DNS, apt sources, the system python or any 
 
 Re-run the installer after every `git pull` (or every `deploy_vps.sh`); it keeps `/etc/deltr.env`.
 
-## Wire the Vercel landing page to it
+## How Vercel reaches the engines
+
+`vercel.json` rewrites `/api/*`, `/mcp`, `/ws/*` to `http://38.49.213.208:8000` and `/live/api/*`,
+`/live/mcp`, `/live/ws/*` to port 8001, so the browser only ever talks to `usedeltrapp.vercel.app`
+over https (an https page cannot call an http address directly). WebSockets do not pass the rewrite,
+so the dashboard runs on its 1 Hz poll fallback there. `next.config.js` sets
+`NEXT_PUBLIC_ENGINES=paper=|live=/live` on Vercel, which is what renders the header switch; the copy
+FastAPI serves on the VPS itself has one engine and no switch.
+
+## Wire the Vercel landing page to it (only without the rewrites)
 
 The Vercel site is static and has no backend, so its **Launch App** button must point at the VPS.
 On Vercel: Project → Settings → Environment Variables → add
@@ -79,5 +117,7 @@ sudo nano /etc/deltr.env && sudo systemctl restart deltr
 
 ## Judges' MCP access
 
-`claude mcp add deltr --transport http http://38.49.213.208:PORT/mcp` (or the https URL). Read tools work for
-everyone; the mutating tools answer `READ_ONLY` unless the `X-Deltr-Token` header carries the token.
+PAPER: `claude mcp add deltr --transport http https://usedeltrapp.vercel.app/mcp`
+LIVE: `claude mcp add deltr-live --transport http https://usedeltrapp.vercel.app/live/mcp`
+(or the raw `http://38.49.213.208:8000/mcp` and `:8001/mcp`). Read tools work for everyone; the mutating
+tools answer `READ_ONLY` unless the `X-Deltr-Token` header carries that engine's token.
