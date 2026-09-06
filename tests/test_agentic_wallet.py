@@ -597,3 +597,19 @@ def test_a_placeholder_short_secret_does_not_refuse_every_wallet_command():
         assert_no_secret_in_argv([*safe, "--symbol", "a-real-looking-secret-value"],
                                  forbidden=["a-real-looking-secret-value"])
     assert exc.value.code == "SECRET_IN_ARGV"
+
+
+async def test_wallet_address_parses_the_real_cli_shape_and_keys_by_chain_id_and_name():
+    """`baw wallet address --json` returns {"addresses": [{"binanceChainId": "56", "chainName": "BSC",
+    "address": ...}, ...]} (seen 2026-09-06). The BSC address must be reachable by "56" and "BSC";
+    the Solana row must not shadow it."""
+    evm = "0x" + "d" * 40
+    payload = {"addresses": [
+        {"binanceChainId": "CT_501", "chainName": "Solana", "address": "Asvq99dNMgUyjzfJf5VhpU8oYi2ySpM1VwgMf6HaPWLv"},
+        {"binanceChainId": "1", "chainName": "Ethereum", "address": evm},
+        {"binanceChainId": "56", "chainName": "BSC", "address": evm},
+    ]}
+    c = client({"wallet address": ok(payload)})
+    out = await c.wallet_address()
+    assert out["56"] == evm and out["BSC"] == evm and out["1"] == evm
+    assert out["CT_501"].startswith("Asvq")

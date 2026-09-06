@@ -340,7 +340,7 @@ def _rows(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return [r for r in data if isinstance(r, dict)]
     if isinstance(data, Mapping):
-        for key in ("list", "items", "records", "data", "orders", "transactions", "approvals", "balances"):
+        for key in ("list", "items", "records", "data", "orders", "transactions", "approvals", "balances", "addresses"):
             inner = data.get(key)
             if isinstance(inner, list):
                 return [r for r in inner if isinstance(r, dict)]
@@ -566,11 +566,17 @@ class AgenticWalletClient:
                 if isinstance(value, str) and value.startswith("0x"):
                     out[str(key)] = value
             if not out:
+                # `baw wallet address --json` -> {"addresses": [{"binanceChainId": "56", "chainName": "BSC",
+                # "address": "0x..."}, ...]}: key by the numeric chain id AND the chain name.
                 for row in _rows(data):
                     addr = _first(row, "address", "walletAddress")
-                    chain = _first(row, "chain", "chainName", "binanceChainId", "chainId")
-                    if addr:
-                        out[str(chain or "default")] = str(addr)
+                    if not addr:
+                        continue
+                    for key in (_first(row, "binanceChainId", "chainId"), _first(row, "chain", "chainName")):
+                        if key:
+                            out[str(key)] = str(addr)
+                    if not out:
+                        out["default"] = str(addr)
         elif isinstance(data, str):
             out["default"] = data
         return out

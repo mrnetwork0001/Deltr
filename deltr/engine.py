@@ -551,7 +551,12 @@ class Engine:
 
     # ------------------------------------------------------------------ read
     def snapshot(self) -> Snapshot:
-        return self.state.snapshot(self.gate.snapshot())
+        """The dashboard frame. Its status is the same object /api/status returns, so the armed
+        flag and the wallet address never disagree between the two."""
+        snap = self.state.snapshot(self.gate.snapshot())
+        if self.settings.mode == Mode.LIVE and self.live_facts:
+            snap = snap.model_copy(update={"status": self.status()})
+        return snap
 
     def status(self) -> SystemStatus:
         """System status, including whether REAL FUNDS are armed.
@@ -564,7 +569,12 @@ class Engine:
         facts = self.live_facts
         if self.settings.mode == Mode.LIVE and facts:
             addrs = facts.get("wallet_addresses") or {}
-            addr = next((str(v) for v in addrs.values() if v), None) if isinstance(addrs, dict) else None
+            addr = None
+            if isinstance(addrs, dict):
+                # the trading chain's address first, then any EVM address, then whatever is there
+                addr = (addrs.get(str(self.settings.wallet_chain_id))
+                        or next((str(v) for v in addrs.values() if isinstance(v, str) and v.startswith("0x")), None)
+                        or next((str(v) for v in addrs.values() if v), None))
             st = st.model_copy(update={"real_funds_armed": True, "wallet_address": addr})
         return st
 
