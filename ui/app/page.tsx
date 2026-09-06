@@ -8,8 +8,6 @@ import EdgeExplainer from "@/components/landing/EdgeExplainer";
 import SafetyTable from "@/components/landing/SafetyTable";
 import ConnectPanel from "@/components/landing/ConnectPanel";
 import AgentOsPanel from "@/components/landing/AgentOsPanel";
-import DemoTimeline from "@/components/landing/DemoTimeline";
-import Hackathon from "@/components/landing/Hackathon";
 import Faq from "@/components/landing/Faq";
 import Footer from "@/components/landing/Footer";
 
@@ -26,8 +24,6 @@ export default function LandingPage() {
         <SafetyTable />
         <ConnectPanel />
         <AgentOsPanel />
-        <DemoTimeline />
-        <Hackathon />
         <Faq />
       </main>
       <Footer />
