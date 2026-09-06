@@ -2,8 +2,6 @@
 // Deltr dashboard (served at /app/): 12-column grid, 1 Hz snapshot poll with WS
 // accelerator, automatic fallback to the bundled mock so the page is never blank.
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import type { Snapshot } from "@/lib/types";
 import { fetchMockSnapshot, fetchSnapshot, openStream } from "@/lib/api";
 import StatusBar from "@/components/StatusBar";
@@ -87,17 +85,8 @@ export default function Page() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[1800px] flex-col gap-2 p-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-        <Link
-          href="/"
-          title="Back to the landing page"
-          className="flex shrink-0 items-center gap-1 self-start rounded-md border border-ink-700 bg-ink-900 px-2 py-1.5 text-xs text-gray-400 hover:border-gray-500 hover:text-gray-100 sm:self-auto"
-        >
-          <ArrowLeft size={12} /> Home
-        </Link>
-        <div className="min-w-0 flex-1 overflow-x-auto">
-          <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
-        </div>
+      <div className="min-w-0 overflow-x-auto">
+        <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
       </div>
 
       {!snap ? (

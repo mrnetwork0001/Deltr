@@ -1,6 +1,7 @@
 "use client";
 // Row 1: mode + provenance + equity + drawdown + safety badges. Also exports the
 // small primitives (Panel, Chip, SourceBadge, StatusTag) every other panel uses.
+import Link from "next/link";
 import {
   AlertTriangle,
   Check,
@@ -161,11 +162,11 @@ export default function StatusBar({ status, portfolio, mock, transport, lastUpda
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-ink-700 bg-ink-900 px-3 py-2">
       <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 text-base font-bold tracking-tight text-bnb">
+        <Link href="/" title="Back to the landing page" className="flex items-center gap-1.5 text-base font-bold tracking-tight text-bnb transition hover:text-bnb-dim">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/deltr-mark.png" alt="" className="h-5 w-5" aria-hidden />
           Deltr
-        </span>
+        </Link>
         <Chip color={mode === "testnet" ? "#1FC7D4" : "#F0B90B"} solid>
           {mode.toUpperCase()}
         </Chip>
