@@ -2,9 +2,49 @@
 // Hero: two columns on a faint grid. Left: the strategy in one breath, the prompt a
 // user actually says, two outlined actions and a mono caption. Right: a continuously
 // animating screen (HeroScene). Below: a four-tile stats strip with honest numbers.
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DASHBOARD_PATH } from "@/lib/landing";
 import HeroScene from "./HeroScene";
+
+// Counts from 0 to the real value the first time the strip is on screen. Renders
+// the final value on the server, so the number is right without JS.
+function CountUp({ value }: { value: string }) {
+  const n = Number.parseInt(value, 10);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || Number.isNaN(n) || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const run = () => {
+      const t0 = performance.now();
+      const step = (t: number) => {
+        const p = Math.min(1, (t - t0) / 1200);
+        const eased = 1 - Math.pow(1 - p, 3);
+        setShown(String(Math.round(n * eased)));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const io = new IntersectionObserver(
+      (es) => {
+        if (es.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          run();
+        }
+      },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [n]);
+  return <span ref={ref}>{shown}</span>;
+}
 
 // Every number here is measured or counted in the repo, not aspirational.
 const STATS: { value: string; label: string }[] = [
@@ -76,7 +116,9 @@ export default function Hero() {
         <ul className="mx-auto grid max-w-[calc(50vw+36rem)] grid-cols-2 divide-ink-700/80 sm:grid-cols-4 sm:divide-x">
           {STATS.map((s) => (
             <li key={s.label} className="px-4 py-6 text-center">
-              <p className="font-mono text-2xl font-bold tabular-nums text-gray-50 sm:text-3xl">{s.value}</p>
+              <p className="font-mono text-2xl font-bold tabular-nums text-gray-50 sm:text-3xl">
+                <CountUp value={s.value} />
+              </p>
               <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-bnb/90">{s.label}</p>
             </li>
           ))}
