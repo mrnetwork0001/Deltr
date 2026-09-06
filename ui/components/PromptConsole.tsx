@@ -166,7 +166,7 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
         </>
       }
     >
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[3fr_2fr]">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <form
             onSubmit={(e) => {
@@ -180,12 +180,12 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
               onChange={(e) => setText(e.target.value)}
               placeholder='e.g. "Rebalance $5,000 USDC into delta-neutral BNB arbitrage."'
               disabled={mock || busy}
-              className="flex-1 rounded border border-ink-700 bg-ink-950 px-3 py-1.5 text-[13px] text-gray-100 placeholder:text-gray-600 focus:border-cake focus:outline-none disabled:opacity-60"
+              className="flex-1 rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-[13px] text-gray-100 placeholder:text-gray-600 focus:border-cake focus:outline-none disabled:opacity-60"
             />
             <button
               type="submit"
               disabled={mock || busy || !text.trim()}
-              className="inline-flex items-center gap-1 rounded border border-cake bg-cake/10 px-3 py-1.5 text-[13px] font-semibold text-cake hover:bg-cake/20 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-md border border-cake bg-cake/10 px-3.5 py-2 text-[13px] font-semibold text-cake transition hover:bg-cake/20 disabled:opacity-40"
             >
               <Send size={13} /> propose
             </button>
@@ -269,9 +269,9 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3 text-xs">
+        <div className="grid gap-4 border-t border-ink-700 pt-4 text-xs">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-gray-500">
+            <div className="mb-1.5 flex items-center gap-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-gray-500">
               stress (labelled SIMULATED, feeds untouched)
             </div>
             <div className="flex flex-wrap gap-1">
@@ -298,8 +298,9 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
             {stressMsg ? <div className="mt-1 text-gray-400">{stressMsg}</div> : null}
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
           <div>
-            <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wide text-gray-500">
+            <div className="mb-1.5 flex items-center justify-between text-[10.5px] font-medium uppercase tracking-[0.12em] text-gray-500">
               <span>min edge (scout + gate)</span>
               <span className="font-mono normal-case tabular-nums text-gray-200">
                 {bps(minEdge)}
@@ -330,12 +331,12 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
             {minEdgeMsg ? <div className="text-gray-400">{minEdgeMsg}</div> : null}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-gray-500">kill switch</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-gray-500">kill switch</span>
             <button
               disabled={mock}
               onClick={() => kill(!status?.kill_switch)}
-              className="inline-flex items-center gap-1 rounded border px-2 py-[2px] font-semibold disabled:opacity-40"
+              className="inline-flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 font-semibold disabled:opacity-40"
               style={
                 status?.kill_switch
                   ? { borderColor: STATUS.critical, color: "#07090f", background: STATUS.critical }
@@ -344,6 +345,7 @@ export default function PromptConsole({ status, mock, onTrace, onChanged }: Prom
             >
               <Power size={12} /> {status?.kill_switch ? "ON: click to release" : "off"}
             </button>
+          </div>
           </div>
         </div>
       </div>

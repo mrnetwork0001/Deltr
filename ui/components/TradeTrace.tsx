@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 import type { ExecutionReceipt, Fill, PromptResult, TraceStep } from "@/lib/types";
 import { STATUS, bps, clockMs, ms, px, qty, shortHash, usd } from "@/lib/format";
-import { Chip, Panel, SourceBadge, StatusTag } from "@/components/StatusBar";
+import { Chip, Label, Panel, SourceBadge, StatusTag } from "@/components/StatusBar";
 
 function stepKind(s: TraceStep): "good" | "critical" | "warning" | "muted" {
   return s.status === "ok" ? "good" : s.status === "veto" || s.status === "error" ? "critical" : "muted";
@@ -191,11 +191,11 @@ export default function TradeTrace({ receipts, prompts, selectedTraceId, onSelec
           {r.prompt ? <blockquote className="border-l-2 border-cake pl-3 text-[14px] italic text-gray-100">“{r.prompt}”</blockquote> : null}
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
             <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wide text-gray-500">steps</div>
+              <Label className="mb-1.5">steps</Label>
               <Steps steps={r.steps} />
             </div>
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">fills</div>
+              <Label>fills</Label>
               <Fills fills={r.fills} />
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[13px] text-gray-400">
                 <div>

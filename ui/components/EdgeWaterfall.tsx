@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import type { EdgeBreakdown, EdgeComponent, MarketState } from "@/lib/types";
 import { SERIES, STATUS, SURFACE, bps, countdown, pct, rate, usd } from "@/lib/format";
 import { fetchMarket } from "@/lib/api";
-import { Panel, SourceBadge } from "@/components/StatusBar";
+import { Field, Label, Panel, SourceBadge } from "@/components/StatusBar";
 import { useMeasure } from "@/components/SpreadChart";
 
 /** Offline/mock fallback only: mirrors EdgeBreakdown.components() in deltr/models.py. */
@@ -30,9 +30,20 @@ export function edgeComponents(e: EdgeBreakdown): EdgeComponent[] {
   return c;
 }
 
-const ROW = 18;
-const LABEL_W = 190;
-const VAL_W = 60;
+const ROW = 22;
+const LABEL_W = 200;
+const VAL_W = 64;
+
+/** Bars are coloured by the entity that charges them (DEX orange, perp blue, funding gold),
+ *  the basis by its sign, the net in text colour. */
+function barColor(c: EdgeComponent): string {
+  if (c.kind === "net") return SURFACE.text;
+  const l = c.label.toLowerCase();
+  if (l.includes("funding")) return SERIES.funding;
+  if (l.includes("dex") || l.includes("pool") || l.includes("impact") || l.includes("gas") || l.includes("bsc")) return SERIES.dex;
+  if (l.includes("perp") || l.includes("taker") || l.includes("slip")) return SERIES.perp;
+  return c.kind === "gain" ? SERIES.edge : STATUS.critical;
+}
 
 // --------------------------------------------------------------------------- horizon view
 // Mirrors deltr/horizon.py.  The backend is the source of truth (GET /api/market returns
@@ -247,7 +258,7 @@ function Waterfall({ width, comps }: { width: number; comps: EdgeComponent[] }) 
       <line x1={x(0)} x2={x(0)} y1={0} y2={height - 4} stroke={SURFACE.hairline} strokeWidth={1} />
       {bars.map((b, i) => {
         const isNet = b.c.kind === "net";
-        const color = isNet ? SURFACE.text : b.c.kind === "gain" ? STATUS.good : STATUS.critical;
+        const color = barColor(b.c);
         const x0 = Math.min(x(b.from), x(b.to));
         const w = Math.max(2, Math.abs(x(b.to) - x(b.from)));
         const y = i * ROW + 3;
@@ -256,7 +267,7 @@ function Waterfall({ width, comps }: { width: number; comps: EdgeComponent[] }) 
         return (
           <g key={i} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}>
             <rect x={0} y={i * ROW} width={width} height={ROW} fill={hover === i ? SURFACE.raised : "transparent"} />
-            <text x={0} y={y + h - 2} fontSize={11} fill={isNet ? SURFACE.text : SURFACE.text2} fontWeight={isNet ? 700 : 400}>
+            <text x={0} y={y + h - 1} fontSize={12} fill={isNet ? SURFACE.text : SURFACE.text2} fontWeight={isNet ? 700 : 400}>
               {b.c.label.length > 34 ? b.c.label.slice(0, 33) + "…" : b.c.label}
             </text>
             <rect
@@ -272,8 +283,8 @@ function Waterfall({ width, comps }: { width: number; comps: EdgeComponent[] }) 
             />
             <text
               x={LABEL_W + plotW + 6}
-              y={y + h - 2}
-              fontSize={11}
+              y={y + h - 1}
+              fontSize={12}
               fontWeight={isNet ? 700 : 500}
               fill={SURFACE.text}
               className="font-mono tabular-nums"
@@ -445,38 +456,34 @@ export default function EdgeWaterfall({ edge, market, actionable, reason, mock }
       <div ref={ref} className="flex flex-col gap-2">
         {e ? (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-3 pb-1">
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-gray-500">net edge · {e.horizon_h} h</div>
-                <div className="text-2xl font-semibold" style={{ color: net !== null && net >= 0 ? STATUS.good : STATUS.critical }}>
-                  {bps(net)}
+                <Label>net edge · {e.horizon_h} h</Label>
+                <div className="mt-0.5 flex items-baseline gap-3">
+                  <span className="font-mono text-[26px] font-semibold leading-none tabular-nums" style={{ color: net !== null && net >= 0 ? STATUS.good : STATUS.critical }}>
+                    {bps(net)}
+                  </span>
+                  {actionable === null ? null : (
+                    <span className="text-[12px]" style={{ color: actionable ? STATUS.good : STATUS.warning }}>
+                      {actionable ? "actionable" : "not actionable"}
+                      {reason && reason !== "ok" ? <span className="font-mono text-gray-500"> · {reason}</span> : null}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="text-xs text-gray-400">
-                <div>
-                  notional <span className="font-mono tabular-nums text-gray-200">{usd(e.notional_usd, 0)}</span>
-                </div>
-                <div>
-                  expected <span className="font-mono tabular-nums text-gray-200">{usd(e.expected_edge_usd)}</span> · allocated risk{" "}
-                  <span className="font-mono tabular-nums text-gray-200">{usd(e.allocated_risk_usd)}</span>
-                </div>
-              </div>
-              <div className="ml-auto text-right text-xs">
-                {actionable === null ? null : actionable ? (
-                  <span style={{ color: STATUS.good }}>actionable</span>
-                ) : (
-                  <span style={{ color: STATUS.warning }}>not actionable</span>
-                )}
-                {reason && reason !== "ok" ? <div className="font-mono text-[11px] text-gray-500">{reason}</div> : null}
+              <div className="ml-auto grid grid-cols-3 gap-x-5">
+                <Field label="Notional">{usd(e.notional_usd, 0)}</Field>
+                <Field label="Expected">{usd(e.expected_edge_usd)}</Field>
+                <Field label="Allocated risk">{usd(e.allocated_risk_usd)}</Field>
               </div>
             </div>
             <Waterfall width={width} comps={comps} />
             {altErr ? <div className="text-[11px] text-gray-500">{horizon} h view unavailable ({altErr}); showing {edge?.horizon_h} h</div> : null}
             {hz ? (
-              <div className="flex flex-col gap-1 border-t border-ink-700 pt-2">
-                <div className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                  <span className="uppercase tracking-wide text-gray-500">breakeven</span>
-                  <span style={{ color: hz.breakeven.reached_within_horizon ? STATUS.good : STATUS.warning }}>{hz.breakeven.verdict}</span>
+              <div className="flex flex-col gap-1.5 border-t border-ink-700 pt-3">
+                <Label>breakeven</Label>
+                <div className="text-[12px] leading-5" style={{ color: hz.breakeven.reached_within_horizon ? STATUS.good : STATUS.warning }}>
+                  {hz.breakeven.verdict}
                 </div>
                 <div className="text-[11px] text-gray-400">
                   the carry has to repay{" "}
@@ -527,16 +534,10 @@ export default function EdgeWaterfall({ edge, market, actionable, reason, mock }
                 </div>
               </div>
             ) : null}
-            <div className="grid grid-cols-3 gap-x-3 gap-y-1 border-t border-ink-700 pt-2 text-[11px] text-gray-400">
-              <div>
-                basis <span className="font-mono tabular-nums text-gray-200">{bps(e.basis_entry_bps)}</span>
-              </div>
-              <div>
-                round trip <span className="font-mono tabular-nums text-gray-200">{bps(-e.roundtrip_cost_bps)}</span>
-              </div>
-              <div>
-                shock assumed <span className="font-mono tabular-nums text-gray-200">{bps(e.basis_shock_bps, 0)}</span>
-              </div>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-2 border-t border-ink-700 pt-3 text-[11px] text-gray-400">
+              <Field label="Entry basis">{bps(e.basis_entry_bps)}</Field>
+              <Field label="Round trip">{bps(-e.roundtrip_cost_bps)}</Field>
+              <Field label="Shock assumed">{bps(e.basis_shock_bps, 0)}</Field>
               <div className="col-span-3 flex flex-wrap items-center gap-x-2">
                 funding
                 <span className="font-mono tabular-nums text-gray-200">{rate(fund?.last_funding_rate ?? e.funding_rate_last)}</span>

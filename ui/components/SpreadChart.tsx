@@ -218,7 +218,7 @@ export default function SpreadChart({ history, market, minEdgeBps }: SpreadChart
         </>
       }
     >
-      <div ref={ref} className="flex flex-col gap-2">
+      <div ref={ref} className="flex flex-1 flex-col justify-between gap-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-300">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-[2px] w-4" style={{ background: SERIES.dex }} />
@@ -236,7 +236,7 @@ export default function SpreadChart({ history, market, minEdgeBps }: SpreadChart
         {pts.length ? (
           <LineChart
             width={width}
-            height={132}
+            height={176}
             xs={xs}
             ariaLabel="DEX executable buy price vs perp reference price, last 10 minutes"
             series={[
@@ -245,7 +245,7 @@ export default function SpreadChart({ history, market, minEdgeBps }: SpreadChart
             ]}
           />
         ) : (
-          <div className="flex h-[132px] items-center justify-center rounded border border-dashed border-ink-700 text-xs text-gray-500">
+          <div className="flex h-[176px] items-center justify-center rounded border border-dashed border-ink-700 text-xs text-gray-500">
             {market ? "collecting ticks" : "feeds warming up: no market state yet"}
           </div>
         )}
@@ -275,7 +275,7 @@ export default function SpreadChart({ history, market, minEdgeBps }: SpreadChart
         {pts.length ? (
           <LineChart
             width={width}
-            height={96}
+            height={120}
             xs={xs}
             ariaLabel="Net edge in basis points vs the min-edge threshold"
             series={[{ key: "edge", label: "net edge", color: SERIES.edge, values: pts.map((p) => p.net_edge_bps), fmt: (v) => bps(v, 1, false) }]}

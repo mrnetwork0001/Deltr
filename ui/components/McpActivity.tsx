@@ -22,29 +22,25 @@ export default function McpActivity({ activity, status, onSelectTrace }: McpActi
   const rows = [...activity].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
   const up = status?.upstream;
   return (
-    <Panel
-      title="MCP activity"
-      right={
-        <>
-          <Chip color="#1FC7D4" title="Deltr's own MCP server (streamable HTTP)">
-            Deltr MCP: http {mcpUrl()}
-          </Chip>
-          <Chip
-            color={up?.kind === "official" ? STATUS.good : up?.kind === "shim" ? "#1FC7D4" : "#6b7280"}
-            title={up?.error ?? up?.url ?? "no upstream"}
-          >
-            Binance upstream: {up?.kind ?? "none"}
-            {up?.tools_discovered?.length ? ` · ${up.tools_discovered.length} tools` : ""}
-          </Chip>
-        </>
-      }
-    >
+    <Panel title="MCP activity" className="flex-1" right={<span className="font-mono tabular-nums">{rows.length} calls</span>}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Chip color="#1FC7D4" title="Deltr's own MCP server (streamable HTTP)">
+          Deltr MCP: http {mcpUrl()}
+        </Chip>
+        <Chip
+          color={up?.kind === "official" ? STATUS.good : up?.kind === "shim" ? "#1FC7D4" : "#6b7280"}
+          title={up?.error ?? up?.url ?? "no upstream"}
+        >
+          Binance upstream: {up?.kind ?? "none"}
+          {up?.tools_discovered?.length ? ` · ${up.tools_discovered.length} tools` : ""}
+        </Chip>
+      </div>
       {rows.length ? (
-        <ul className="flex max-h-[420px] flex-col gap-[3px] overflow-y-auto pr-1 text-xs">
+        <ul className="flex max-h-[420px] flex-col overflow-y-auto rounded-md border border-ink-700/80 text-xs">
           {rows.map((r) => {
             const inbound = r.direction === "inbound";
             return (
-              <li key={r.id} className="grid grid-cols-[14px_84px_1fr_auto] items-center gap-2 rounded border border-ink-700 bg-ink-950/60 px-2 py-1">
+              <li key={r.id} className="grid grid-cols-[14px_84px_1fr_auto] items-center gap-2 border-b border-ink-700/60 px-2.5 py-1.5 last:border-0 hover:bg-ink-800/50">
                 <span className="text-gray-500" title={inbound ? "inbound: a client called Deltr" : "outbound: Deltr called an upstream"}>
                   {inbound ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
                 </span>
@@ -84,7 +80,7 @@ export default function McpActivity({ activity, status, onSelectTrace }: McpActi
           })}
         </ul>
       ) : (
-        <div className="flex h-32 flex-col items-center justify-center gap-1 text-xs text-gray-500">
+        <div className="flex min-h-[8rem] flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-ink-700 px-3 text-center text-xs text-gray-500">
           <span>no MCP calls yet</span>
           <span className="font-mono text-gray-600">claude mcp add deltr --transport http http://127.0.0.1:8000/mcp</span>
         </div>
