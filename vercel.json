@@ -7,6 +7,22 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/live/api/:path*",
+      "destination": "http://38.49.213.208:8001/api/:path*"
+    },
+    {
+      "source": "/live/mcp",
+      "destination": "http://38.49.213.208:8001/mcp"
+    },
+    {
+      "source": "/live/mcp/:path*",
+      "destination": "http://38.49.213.208:8001/mcp/:path*"
+    },
+    {
+      "source": "/live/ws/:path*",
+      "destination": "http://38.49.213.208:8001/ws/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "http://38.49.213.208:8000/api/:path*"
     },
