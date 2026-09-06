@@ -4,3 +4,45 @@
 
 :root { color-scheme: dark; }
 html, body { background: #07090f; color: #e5e7eb; }
+
+/* ---- hero: faint grid + the animated scene ------------------------------------ */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+@keyframes hero-scroll { from { transform: translateX(0); } to { transform: translateX(-600px); } }
+.hero-scroll { animation: hero-scroll 22s linear infinite; }
+
+@keyframes hero-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero-pulse { animation: hero-pulse 1.6s ease-in-out infinite; }
+
+/* checks light up one by one over ~3.2 s, hold, then the sequence restarts */
+@keyframes hero-check {
+  0%   { opacity: 0.25; }
+  12%  { opacity: 1; }
+  78%  { opacity: 1; }
+  90%  { opacity: 0.25; }
+  100% { opacity: 0.25; }
+}
+.hero-check { animation: hero-check 7s ease-in-out infinite; opacity: 0.25; }
+
+/* receipt hash types itself, then clears and types again */
+@keyframes hero-type { 0% { clip-path: inset(0 100% 0 0); } 45% { clip-path: inset(0 0 0 0); } 85% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 100% 0 0); } }
+.hero-type { animation: hero-type 7s steps(48, end) infinite; }
+
+@keyframes hero-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.hero-fade { display: inline-block; animation: hero-fade 0.5s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-scroll, .hero-pulse, .hero-check, .hero-type, .hero-fade { animation: none; opacity: 1; clip-path: none; }
+}
+
+/* entrance: visible immediately if JS/animation is unavailable, gentle fade otherwise */
+@keyframes hero-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.hero-in { animation: hero-in 0.55s ease-out both; }
+.hero-in:nth-child(2) { animation-delay: 0.08s; }
+.hero-in:nth-child(3) { animation-delay: 0.16s; }
+.hero-in:nth-child(4) { animation-delay: 0.24s; }
+@media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
