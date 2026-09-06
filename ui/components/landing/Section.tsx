@@ -18,7 +18,7 @@ export function Section({
 }) {
   return (
     <section id={id} className={`scroll-mt-20 border-t border-ink-700/70 py-14 sm:py-20 ${className}`}>
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-[calc(50vw+36rem)] px-4 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-bnb">{eyebrow}</p>
         <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-100 sm:text-3xl">{title}</h2>
         {lead ? <div className="mt-3 max-w-3xl text-[15px] leading-relaxed text-gray-400">{lead}</div> : null}
