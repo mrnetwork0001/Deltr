@@ -19,6 +19,9 @@ through the Engine (``tests/test_choke_point.py``).
 """
 from __future__ import annotations
 
+import hmac
+import json
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -71,6 +74,35 @@ def _map_exception(exc: Exception) -> tuple[int, str]:
         return 404, "NOT_FOUND"
     return 500, "INTERNAL_ERROR"
 
+
+
+class PublicReadOnlyMiddleware:
+    """Refuse every mutating /api request unless the caller presents DELTR_API_TOKEN.
+
+    Only active when settings.public_readonly is set. GET/HEAD/OPTIONS, the dashboard,
+    the websocket stream and /mcp (guarded separately, tool by tool) pass through.
+    """
+
+    def __init__(self, app: Any, settings: Any) -> None:
+        self.app = app
+        self.enabled = bool(getattr(settings, "public_readonly", False))
+        self.token = getattr(settings, "api_token", None) or ""
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if (
+            self.enabled
+            and scope.get("type") == "http"
+            and scope.get("method", "GET").upper() in {"POST", "PUT", "PATCH", "DELETE"}
+            and str(scope.get("path", "")).startswith("/api/")
+        ):
+            headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+            presented = headers.get("x-deltr-token", "")
+            if not (self.token and presented and hmac.compare_digest(presented, self.token)):
+                body = json.dumps({"error": {"code": "READ_ONLY", "message": "This is a public read-only Deltr instance; mutations need the X-Deltr-Token header."}}).encode()
+                await send({"type": "http.response.start", "status": 403, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+                await send({"type": "http.response.body", "body": body})
+                return
+        await self.app(scope, receive, send)
 
 class ErrorEnvelopeMiddleware:
     """Pure-ASGI middleware: any exception escaping a route becomes the JSON envelope with the
@@ -160,6 +192,7 @@ def create_app(engine: Any, mcp: Any, activity: Any, *, ui_dir: Optional[Path] =
                          details=[{"loc": [str(x) for x in e.get("loc", [])], "msg": e.get("msg", "")} for e in exc.errors()])
 
     app.add_middleware(ErrorEnvelopeMiddleware)
+    app.add_middleware(PublicReadOnlyMiddleware, settings=getattr(engine, "settings", None))
     app.add_middleware(McpBarePathMiddleware)
 
     # ---- routes --------------------------------------------------------------------------

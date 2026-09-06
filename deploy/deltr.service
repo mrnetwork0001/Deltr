@@ -1,0 +1,26 @@
+[Unit]
+Description=Deltr - CEX/DEX delta-neutral arbitrage agent (public read-only showcase)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deltr
+Group=deltr
+WorkingDirectory=/opt/deltr
+# Secrets and the mutation token live in /etc/deltr.env (root:deltr 0640), never in the unit.
+EnvironmentFile=/etc/deltr.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/deltr/.venv/bin/python /opt/deltr/main.py --port 8000 --state-dir /var/lib/deltr
+Restart=always
+RestartSec=3
+# hardening: the showcase never needs to write outside its state dir
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/deltr
+StateDirectory=deltr
+
+[Install]
+WantedBy=multi-user.target

@@ -209,6 +209,12 @@ class Settings(BaseSettings):
     bsc_chain_id: int = Field(default=56, alias="BSC_CHAIN_ID")
     dex_quote_cache_s: float = Field(default=2.0, alias="DELTR_DEX_QUOTE_CACHE_S")
 
+    # ---- public deployment ------------------------------------------------------
+    # A public showcase (VPS, judges) must be VIEW-ONLY: every mutating API route and
+    # every mutating MCP tool is refused unless the caller presents the token.
+    public_readonly: bool = Field(default=False, alias="DELTR_PUBLIC_READONLY")
+    api_token: Optional[str] = Field(default=None, alias="DELTR_API_TOKEN")  # secret; never in redacted()
+
     # ---- process --------------------------------------------------------------
     api_port: int = Field(default=8000, alias="DELTR_API_PORT")
     ui_port: int = Field(default=3000, alias="DELTR_UI_PORT")
@@ -513,6 +519,8 @@ class Settings(BaseSettings):
             "api_port": self.api_port,
             "bridge_port": self.bridge_port,
             "replay_path": self.replay_path,
+            "public_readonly": self.public_readonly,
+            "api_token_present": bool(self.api_token),
             "state_dir": self.state_dir,
             "execution_style": self.execution_style.value,
             "execution_style_label": self.execution_style_label,

@@ -20,6 +20,8 @@ The engine is taken by duck type: any object exposing the 4.14 surface works
 
 from __future__ import annotations
 
+import inspect
+
 import dataclasses
 import json
 import logging
@@ -284,6 +286,64 @@ def _explained(engine: Any, capital_usd: Any, leverage: Any, horizon_h: Any, ass
 
 
 # --------------------------------------------------------------------------- server factory
+
+MUTATING_TOOLS = (
+    "deltr_execute_hedge", "deltr_unwind", "deltr_kill_switch", "deltr_reset_halt",
+    "deltr_set_min_edge", "deltr_stress", "deltr_onchain_swap", "deltr_x402_pay",
+)
+
+
+def apply_public_readonly(mcp: FastMCP, engine: Any) -> list[str]:
+    """In a public read-only deployment, mutating tools answer with a READ_ONLY error.
+
+    Tools stay listed (so the surface is visible to a judge) but cannot move state.
+    Returns the names that were disabled.
+    """
+    settings = getattr(engine, "settings", None)
+    if not getattr(settings, "public_readonly", False):
+        return []
+    disabled: list[str] = []
+    tools = getattr(getattr(mcp, "_tool_manager", None), "_tools", {}) or {}
+    for name in MUTATING_TOOLS:
+        tool = tools.get(name)
+        if tool is None:
+            continue
+        original = tool.fn
+
+        def _make(orig: Any, tool_name: str) -> Any:
+            envelope = {"error": {"code": "READ_ONLY", "message": f"{tool_name} is disabled on this public read-only instance. Run Deltr locally to execute."}}
+
+            # FastMCP decided at registration whether to await this tool, so the
+            # replacement must match the original's async-ness exactly.
+            if inspect.iscoroutinefunction(orig):
+                async def _blocked(*args: Any, **kwargs: Any) -> dict[str, Any]:
+                    return dict(envelope)
+            else:
+                def _blocked(*args: Any, **kwargs: Any) -> dict[str, Any]:  # type: ignore[misc]
+                    return dict(envelope)
+            _blocked.__name__ = getattr(orig, "__name__", tool_name)
+            _blocked.__doc__ = getattr(orig, "__doc__", None)
+            return _blocked
+
+        tool.fn = _make(original, name)
+        # the READ_ONLY envelope is not the tool's declared structured output: drop the
+        # output schema so FastMCP does not reject the refusal itself
+        for attr in ("output_schema",):
+            if hasattr(tool, attr):
+                try:
+                    setattr(tool, attr, None)
+                except Exception:  # noqa: BLE001 - frozen model; fall through to fn_metadata
+                    pass
+        meta = getattr(tool, "fn_metadata", None)
+        for attr in ("output_schema", "output_model", "wrap_output"):
+            if meta is not None and hasattr(meta, attr):
+                try:
+                    setattr(meta, attr, None if attr != "wrap_output" else False)
+                except Exception:  # noqa: BLE001
+                    pass
+        disabled.append(name)
+    return disabled
+
 def build_mcp(engine: Any, activity: ActivityLog) -> FastMCP:
     """Build the ``deltr`` FastMCP server around an Engine (duck-typed, section 4.14).
 
@@ -823,6 +883,7 @@ def build_mcp(engine: Any, activity: ActivityLog) -> FastMCP:
             data["bsc_rpc_urls"] = redact_urls(data["bsc_rpc_urls"])  # provider keys often live in the URL path
         return json.dumps(data, default=str)
 
+    apply_public_readonly(mcp, engine)
     return mcp
 
 
