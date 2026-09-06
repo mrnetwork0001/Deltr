@@ -215,8 +215,15 @@ export default function StatusBar({ status, mock, transport, lastUpdate, engines
           </Chip>
         ) : null}
         {override ? (
-          <Chip color={STATUS.warning} title="min-edge below 0: negative-edge hedges are allowed so the mechanics are visible (PAPER only)">
-            <AlertTriangle size={11} /> MIN-EDGE OVERRIDE {status?.min_edge_bps} bps
+          <Chip
+            color={mode === "live" ? STATUS.critical : STATUS.warning}
+            title={
+              mode === "live"
+                ? "LIVE TEST OVERRIDE: the min edge is below 0 under a tiny per-trade cap, so a knowingly small loss is accepted for testing"
+                : "min-edge below 0: negative-edge hedges are allowed so the mechanics are visible (PAPER only)"
+            }
+          >
+            <AlertTriangle size={11} /> {mode === "live" ? "LIVE TEST OVERRIDE" : "MIN-EDGE OVERRIDE"} {status?.min_edge_bps} bps
           </Chip>
         ) : null}
         {stress ? (
