@@ -5,7 +5,6 @@
   "outputDirectory": "ui/out",
   "installCommand": "npm ci",
   "cleanUrls": true,
-  "trailingSlash": true,
   "rewrites": [
     {
       "source": "/api/:path*",
