@@ -358,9 +358,17 @@ def transport_security_for(settings: Any) -> TransportSecuritySettings:
     proxy that already pins the Host header.
     """
     raw = str(getattr(settings, "mcp_allowed_hosts", "") or "")
-    extra = [h.strip() for h in raw.split(",") if h.strip()]
-    if "*" in extra:
+    listed = [h.strip() for h in raw.split(",") if h.strip()]
+    if "*" in listed:
         return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    # A proxy in front (Vercel rewrites, some load balancers) forwards the bare host without the
+    # port, so every "host:port" entry also admits "host" and "host:*".
+    extra: list[str] = []
+    for h in listed:
+        bare = h.rsplit(":", 1)[0] if ":" in h and not h.startswith("[") else h
+        for cand in (h, bare, f"{bare}:*"):
+            if cand not in extra:
+                extra.append(cand)
     cors = str(getattr(settings, "cors_origins", "") or "")
     origins = [o.strip() for o in cors.split(",") if o.strip()]
     origins += [f"http://{h}" for h in extra] + [f"https://{h}" for h in extra]

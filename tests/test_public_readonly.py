@@ -24,7 +24,8 @@ def test_mcp_host_allow_list_adds_public_hosts_and_keeps_loopback():
     s = Settings(_env_file=None, DELTR_MODE="paper", DELTR_MCP_ALLOWED_HOSTS="38.49.213.208:8000, deltr.example.com:*", DELTR_CORS_ORIGINS="https://usedeltrapp.vercel.app")  # type: ignore[call-arg]
     t = transport_security_for(s)
     assert t.enable_dns_rebinding_protection is True
-    assert t.allowed_hosts == LOOPBACK_HOSTS + ["38.49.213.208:8000", "deltr.example.com:*"]
+    # an ip:port entry also admits the bare host (proxies forward Host without the port) and host:*
+    assert t.allowed_hosts == LOOPBACK_HOSTS + ["38.49.213.208:8000", "38.49.213.208", "38.49.213.208:*", "deltr.example.com:*", "deltr.example.com"]
     assert "https://usedeltrapp.vercel.app" in t.allowed_origins and "http://38.49.213.208:8000" in t.allowed_origins
     assert "38.49.213.208:8000" in s.redacted()["mcp_allowed_hosts"]
     # default: loopback only, protection on
