@@ -35,6 +35,8 @@ if [ -f /etc/deltr.env ]; then
   if [ -n "$OLD_PORT" ] && [ "$OLD_PORT" != "$PORT" ]; then echo "    /etc/deltr.env has DELTR_API_PORT=$OLD_PORT; using that (edit the file to change it)"; PORT="$OLD_PORT"; fi
 fi
 echo "    port ${PORT} ok"
+IP="$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
+MCP_HOSTS="${IP}:${PORT}"; [ -n "$DOMAIN" ] && MCP_HOSTS="${MCP_HOSTS},${DOMAIN}:*"
 
 echo "==> python 3.11+ (system python is left alone; a venv is created under /opt/deltr)"
 PY=""
@@ -67,6 +69,8 @@ DELTR_API_TOKEN=$TOKEN
 DELTR_API_PORT=$PORT
 DELTR_STATE_DIR=/var/lib/deltr
 DELTR_CORS_ORIGINS=$CORS
+# Host headers the MCP endpoint answers on (loopback is always allowed)
+DELTR_MCP_ALLOWED_HOSTS=$MCP_HOSTS
 ENV
   chown root:deltr /etc/deltr.env && chmod 0640 /etc/deltr.env
   echo
@@ -78,6 +82,7 @@ ENV
 else
   grep -q '^DELTR_CORS_ORIGINS=' /etc/deltr.env || echo "DELTR_CORS_ORIGINS=$CORS" >> /etc/deltr.env
   grep -q '^DELTR_API_PORT=' /etc/deltr.env || echo "DELTR_API_PORT=$PORT" >> /etc/deltr.env
+  grep -q '^DELTR_MCP_ALLOWED_HOSTS=' /etc/deltr.env || echo "DELTR_MCP_ALLOWED_HOSTS=$MCP_HOSTS" >> /etc/deltr.env
   echo "    kept existing /etc/deltr.env"
 fi
 
@@ -117,7 +122,7 @@ echo -n "    health: "; curl -s "http://127.0.0.1:${PORT}/api/health" || echo "(
 echo -n "    token-less mutation (expect 403): "; curl -s -o /dev/null -w '%{http_code}\n' -X POST "http://127.0.0.1:${PORT}/api/kill" -H 'content-type: application/json' -d '{"on":true}'
 systemctl --no-pager --lines=3 status deltr | tail -4
 echo
-IP="$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
+echo -n "    MCP initialize over the public host (expect 200): "; curl -s -o /dev/null -w '%{http_code}\n' --max-time 8 -X POST "http://${IP}:${PORT}/mcp" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
 echo "==> open  http://${IP}:${PORT}/   (landing)   http://${IP}:${PORT}/app/   (dashboard)   http://${IP}:${PORT}/mcp   (MCP)"
 echo "    Vercel: set NEXT_PUBLIC_APP_URL=http://${IP}:${PORT}/app/ and redeploy"
 echo "    logs: journalctl -u deltr -f"

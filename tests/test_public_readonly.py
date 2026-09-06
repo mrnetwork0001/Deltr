@@ -18,6 +18,23 @@ def _settings(**over):
     return Settings(**base)  # type: ignore[call-arg]
 
 
+def test_mcp_host_allow_list_adds_public_hosts_and_keeps_loopback():
+    from deltr.mcp.server import LOOPBACK_HOSTS, transport_security_for
+
+    s = Settings(_env_file=None, DELTR_MODE="paper", DELTR_MCP_ALLOWED_HOSTS="38.49.213.208:8000, deltr.example.com:*", DELTR_CORS_ORIGINS="https://usedeltrapp.vercel.app")  # type: ignore[call-arg]
+    t = transport_security_for(s)
+    assert t.enable_dns_rebinding_protection is True
+    assert t.allowed_hosts == LOOPBACK_HOSTS + ["38.49.213.208:8000", "deltr.example.com:*"]
+    assert "https://usedeltrapp.vercel.app" in t.allowed_origins and "http://38.49.213.208:8000" in t.allowed_origins
+    assert "38.49.213.208:8000" in s.redacted()["mcp_allowed_hosts"]
+    # default: loopback only, protection on
+    d = transport_security_for(Settings(_env_file=None, DELTR_MODE="paper"))  # type: ignore[call-arg]
+    assert d.allowed_hosts == LOOPBACK_HOSTS and d.enable_dns_rebinding_protection is True
+    # "*" switches the check off (reverse proxy that pins Host)
+    off = transport_security_for(Settings(_env_file=None, DELTR_MODE="paper", DELTR_MCP_ALLOWED_HOSTS="*"))  # type: ignore[call-arg]
+    assert off.enable_dns_rebinding_protection is False
+
+
 def test_readonly_is_off_by_default():
     s = Settings(_env_file=None, DELTR_MODE="paper")  # type: ignore[call-arg]
     assert s.public_readonly is False and s.api_token is None

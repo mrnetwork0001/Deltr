@@ -31,6 +31,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Annotated, Any, Awaitable, Callable, Literal, Optional, TypeVar
 
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field, ValidationError
 
@@ -344,6 +345,32 @@ def apply_public_readonly(mcp: FastMCP, engine: Any) -> list[str]:
         disabled.append(name)
     return disabled
 
+LOOPBACK_HOSTS = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+LOOPBACK_ORIGINS = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+
+
+def transport_security_for(settings: Any) -> TransportSecuritySettings:
+    """Host / Origin allow-list for the streamable-HTTP transport.
+
+    Loopback is always accepted (the local ``python main.py`` case). ``DELTR_MCP_ALLOWED_HOSTS``
+    adds the public names a deployment answers on (``ip:port`` or ``name:*``); the CORS origins
+    are accepted as Origins too. A single ``*`` disables the DNS-rebinding check, for a reverse
+    proxy that already pins the Host header.
+    """
+    raw = str(getattr(settings, "mcp_allowed_hosts", "") or "")
+    extra = [h.strip() for h in raw.split(",") if h.strip()]
+    if "*" in extra:
+        return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    cors = str(getattr(settings, "cors_origins", "") or "")
+    origins = [o.strip() for o in cors.split(",") if o.strip()]
+    origins += [f"http://{h}" for h in extra] + [f"https://{h}" for h in extra]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=LOOPBACK_HOSTS + extra,
+        allowed_origins=LOOPBACK_ORIGINS + origins,
+    )
+
+
 def build_mcp(engine: Any, activity: ActivityLog) -> FastMCP:
     """Build the ``deltr`` FastMCP server around an Engine (duck-typed, section 4.14).
 
@@ -357,6 +384,7 @@ def build_mcp(engine: Any, activity: ActivityLog) -> FastMCP:
         stateless_http=True,
         json_response=True,
         streamable_http_path="/",
+        transport_security=transport_security_for(getattr(engine, "settings", None)),
     )
     record = instrumented(activity, "deltr")
 

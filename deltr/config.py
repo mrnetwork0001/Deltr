@@ -217,6 +217,12 @@ class Settings(BaseSettings):
 
     # ---- process --------------------------------------------------------------
     api_port: int = Field(default=8000, alias="DELTR_API_PORT")
+    # Extra Host header values the MCP transport accepts (comma-separated, e.g.
+    # "38.49.213.208:8000,deltr.example.com:*"). Loopback is always allowed. "*" turns the
+    # DNS-rebinding check off entirely (only behind a reverse proxy that pins the Host).
+    mcp_allowed_hosts: str = Field(default="", alias="DELTR_MCP_ALLOWED_HOSTS")
+    # Browser origins allowed by the API's CORS middleware and accepted as MCP Origins.
+    cors_origins: str = Field(default="", alias="DELTR_CORS_ORIGINS")
     ui_port: int = Field(default=3000, alias="DELTR_UI_PORT")
     bridge_port: int = Field(default=8788, alias="DELTR_BRIDGE_PORT")
     state_dir: str = Field(default=str(REPO_ROOT / "state"), alias="DELTR_STATE_DIR")
@@ -517,6 +523,7 @@ class Settings(BaseSettings):
             "price_sanity_bps": self.price_sanity_bps,
             "price_drift_bps": self.price_drift_bps,
             "api_port": self.api_port,
+            "mcp_allowed_hosts": [h for h in self.mcp_allowed_hosts.split(",") if h.strip()],
             "bridge_port": self.bridge_port,
             "replay_path": self.replay_path,
             "public_readonly": self.public_readonly,
