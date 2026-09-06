@@ -1,46 +1,58 @@
-// Section 11: license, disclaimer, links.
+// Footer: brand block on the left (mark, wordmark, mono tagline, blurb, GitHub / X),
+// three mono link columns on the right.
 import Link from "next/link";
-import { FOOTER_LINKS } from "@/lib/landing";
+import { Github, Twitter } from "lucide-react";
+import { FOOTER_BLURB, FOOTER_COLUMNS, FOOTER_TAGLINE, REPO_URL, X_URL } from "@/lib/landing";
+
+function FooterLink({ label, href }: { label: string; href: string }) {
+  const cls = "font-mono text-[15px] text-gray-300 transition hover:text-bnb";
+  if (href.startsWith("/")) return <Link href={href} className={cls}>{label}</Link>;
+  if (href.startsWith("#")) return <a href={href} className={cls}>{label}</a>;
+  return <a href={href} target="_blank" rel="noreferrer" className={cls}>{label}</a>;
+}
 
 export default function Footer() {
   return (
-    <footer className="border-t border-ink-700/70 py-10">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="max-w-xl">
-            <p className="text-base font-bold text-bnb">Deltr</p>
-            <p className="mt-1 text-sm text-gray-400">
-              CEX ↔ DEX delta-neutral basis and funding arbitrage agent on Binance Agent OS, with its own MCP server and a deterministic risk gate.
-            </p>
-            <p className="mt-3 text-sm text-gray-400">Code Apache-2.0; the skill folder (skills/deltr-binance) MIT.</p>
-            <p className="mt-2 text-sm text-gray-400">
-              Deltr is a technical demonstration and does not provide financial, investment, legal or tax advice. Nothing it outputs is a
-              recommendation to enter any position, and you are solely responsible for any decision you make with it. Funding figures are
-              testnet-derived and indicative. Paper fills are simulated at live quoted prices; testnet fills are real testnet orders. There is no
-              production trading mode.
-            </p>
+    <footer className="border-t border-ink-700/70 bg-ink-950 pb-8 pt-14">
+      <div className="mx-auto max-w-[calc(50vw+36rem)] px-4 sm:px-6">
+        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-8">
+          {/* brand block */}
+          <div className="max-w-md">
+            <a href="#top" className="inline-flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-bnb/50" aria-hidden>
+                <span className="h-3.5 w-3.5 rounded-sm bg-bnb" />
+              </span>
+              <span>
+                <span className="block font-mono text-lg font-bold uppercase tracking-[0.28em] text-gray-50">Deltr</span>
+                <span className="block font-mono text-[10px] uppercase tracking-[0.3em] text-bnb/80">{FOOTER_TAGLINE}</span>
+              </span>
+            </a>
+            <p className="mt-8 text-[15px] leading-relaxed text-gray-400">{FOOTER_BLURB}</p>
+            <div className="mt-8 flex items-center gap-4">
+              <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="GitHub" className="text-gray-400 transition hover:text-bnb">
+                <Github size={20} />
+              </a>
+              <a href={X_URL} target="_blank" rel="noreferrer" aria-label="X" className="text-gray-400 transition hover:text-bnb">
+                <Twitter size={20} />
+              </a>
+            </div>
           </div>
-          <nav aria-label="Footer">
-            <ul className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
-              {FOOTER_LINKS.map((l) =>
-                l.href.startsWith("/") ? (
+
+          {/* link columns */}
+          {FOOTER_COLUMNS.map((col) => (
+            <nav key={col.heading} aria-label={col.heading}>
+              <p className="font-mono text-xs uppercase tracking-[0.28em] text-bnb">{col.heading}</p>
+              <ul className="mt-6 space-y-4">
+                {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-gray-300 hover:text-bnb">
-                      {l.label}
-                    </Link>
+                    <FooterLink {...l} />
                   </li>
-                ) : (
-                  <li key={l.label}>
-                    <a href={l.href} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-bnb">
-                      {l.label}
-                    </a>
-                  </li>
-                ),
-              )}
-            </ul>
-          </nav>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
-        <p className="mt-8 font-mono text-sm text-gray-500">Delta-neutral by construction, deterministic by design.</p>
+
       </div>
     </footer>
   );
