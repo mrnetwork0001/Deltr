@@ -755,15 +755,18 @@ class AgenticWalletClient:
             "--gasLevel", str(gas_level).upper(),
             timeout_s=self.swap_timeout_s,
         )
+        sent_at = time.time()
         d = data if isinstance(data, Mapping) else {}
+        log.info("wallet swap submitted; response fields: %s", sorted(str(k) for k in d.keys())[:16])
         order_id = _first(d, "orderId", "order_id", "id")
         order_id = str(order_id) if order_id is not None else None
         result = self._swap_result(d, preview=preview, chain=chain, from_token=from_token, to_token=to_token, qty=qty, order_id=order_id)
 
         # ---- 3. confirm ----------------------------------------------------------------
-        if result.confirmed or not wait_for_confirmation or not order_id:
+        if result.confirmed or not wait_for_confirmation:
             return result
-        return await self.await_order(order_id, preview=preview, chain=chain, from_token=from_token, to_token=to_token, qty=qty)
+        return await self.await_order(order_id or "", preview=preview, chain=chain, from_token=from_token, to_token=to_token,
+                                      qty=qty, sent_at=sent_at)
 
     def _swap_result(
         self,
@@ -779,8 +782,8 @@ class AgenticWalletClient:
         status = str(_first(d, "status", "orderStatus", "swapStatus", "state") or "PENDING").upper()
         tx_hash = _first(d, "txHash", "transactionHash", "txId", "transactionId", "hash", "tx")
         tx_hash = str(tx_hash) if tx_hash else None
-        received = _num(_first(d, "toCoinAmount", "toCoinQty", "toTokenAmount", "toTokenQty", "receivedAmount",
-                               "actualToAmount", "toAmount", "filledAmount"))
+        received = _num(_first(d, "toTokenActualQty", "toCoinActualQty", "toCoinAmount", "toCoinQty", "toTokenAmount",
+                               "toTokenQty", "receivedAmount", "actualToAmount", "toAmount", "filledAmount"))
         confirmed = status in {"FINISHED", "SUCCESS", "CONFIRMED", "FILLED"} and bool(tx_hash)
         if status in {"FAILED", "CANCELLED", "REJECTED"}:
             raise AgenticWalletError(
@@ -809,7 +812,33 @@ class AgenticWalletClient:
         rows = _rows(data)
         if rows:
             return rows[0]
-        return dict(data) if isinstance(data, Mapping) else {"raw": data}
+        return {}
+
+    async def recent_orders(self, *, limit: int = 20) -> list[dict[str, Any]]:
+        """``baw market-order list --json`` — the wallet's recent swap orders, newest first."""
+        self.require_available()
+        return _rows(await self._run("market-order", "list", "--size", str(int(limit))))
+
+    @staticmethod
+    def _order_matches(row: Mapping[str, Any], *, from_token: str, to_token: str, qty: float, since: float) -> bool:
+        """The order the wallet booked for OUR request: same tokens, same amount, booked after we sent it."""
+        def same(a: Any, b: str) -> bool:
+            return str(a or "").lower() == b.lower()
+        if not (same(_first(row, "fromToken", "fromTokenAddress"), from_token) and same(_first(row, "toToken", "toTokenAddress"), to_token)):
+            return False
+        sent = _num(_first(row, "fromTokenQty", "fromCoinAmount", "fromTokenAmount"))
+        if sent is None or qty <= 0 or abs(sent - qty) > max(1e-9, 1e-4 * qty):
+            return False
+        booked = _first(row, "bookTime", "createTime", "createdAt")
+        if booked:
+            try:
+                from datetime import datetime
+                t = datetime.fromisoformat(str(booked).replace("Z", "+00:00")).timestamp()
+                if t < since - 120:
+                    return False
+            except ValueError:
+                pass
+        return True
 
     async def await_order(
         self,
@@ -820,19 +849,34 @@ class AgenticWalletClient:
         from_token: str = "",
         to_token: str = "",
         qty: float = 0.0,
+        sent_at: Optional[float] = None,
     ) -> SwapResult:
-        """Poll ``market-order list --orderId`` until the CLI calls the order finished.
+        """Poll until the CLI calls the order finished.
 
-        On timeout the order is returned **unconfirmed** rather than assumed filled; the caller
-        gets the ``order_id`` so an operator can look it up.
+        ``market-order list --orderId`` is tried first. The id the swap command echoes is not
+        always the id the wallet books the order under (seen 2026-09-06: the swap answered
+        ...641281, the finished order was ...641086), so when that lookup finds nothing the recent
+        order list is matched on tokens, amount and booking time instead. On timeout the order is
+        returned **unconfirmed** rather than assumed filled; the caller gets the id so an operator
+        can look it up.
         """
         deadline = time.monotonic() + self.confirm_timeout_s
+        since = float(sent_at if sent_at is not None else time.time())
         last: SwapResult | None = None
         while True:
-            row = await self.order(order_id)
+            row: Mapping[str, Any] = await self.order(order_id) if order_id else {}
+            if not row and from_token and to_token and qty > 0:
+                for cand in await self.recent_orders():
+                    if self._order_matches(cand, from_token=from_token, to_token=to_token, qty=qty, since=since):
+                        row = cand
+                        booked_id = _first(cand, "orderId", "order_id", "id")
+                        if booked_id is not None and str(booked_id) != order_id:
+                            log.info("wallet order id differs from the swap echo (%s -> %s); using the booked one", order_id, booked_id)
+                            order_id = str(booked_id)
+                        break
             last = self._swap_result(
                 row, preview=preview, chain=int(chain if chain is not None else self.chain_id),
-                from_token=from_token, to_token=to_token, qty=qty, order_id=order_id,
+                from_token=from_token, to_token=to_token, qty=qty, order_id=order_id or None,
             )
             if last.confirmed:
                 return last

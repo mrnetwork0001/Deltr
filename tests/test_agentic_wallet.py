@@ -625,3 +625,31 @@ async def test_quote_parses_the_real_cli_shape_and_derives_min_receive_from_the_
     assert abs(q.to_amount - 0.009953111387266435) < 1e-12
     assert q.min_receive is not None and abs(q.min_receive - 0.009953111387266435 * 0.995) < 1e-12
     assert q.price_impact_pct is None
+
+
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+async def test_confirmation_matches_the_booked_order_when_the_echoed_id_finds_nothing():
+    """Seen 2026-09-06: `market-order swap` echoed orderId ...641281 while the wallet booked the
+    order as ...641086; `list --orderId <echo>` returned an empty page, so the finished swap was
+    reported unconfirmed and a real perp leg was reversed. The recent list is matched instead."""
+    usdt, wbnb = "0x55d398326f99059fF775485246999027B3197955", "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
+    finished = {"orderType": "market", "orderId": "26090600001864641086", "chain": "56",
+                "fromToken": usdt, "fromTokenName": "USDT", "fromTokenQty": "7.501094352902752500",
+                "toToken": wbnb.lower(), "toTokenName": "WBNB", "toTokenActualQty": "0.010002675822947886",
+                "status": "FINISHED", "slippage": "0.5000", "txHash": "0x" + "5e" * 32,
+                "bookTime": _now_iso(), "updatedTime": _now_iso()}
+    c = client({
+        "market-order quote": ok({"fromCoinAmount": "7.501094352902752500", "toCoinAmount": "0.0100", "slippage": 0.005}),
+        "market-order swap": ok({"orderId": "26090600001864641281"}),
+        # first call: --orderId <echo> -> empty page; second call: the unfiltered recent list
+        "market-order list": [ok({"total": 0, "page": 1, "pageSize": 1, "list": []}),
+                              ok({"total": 1, "page": 1, "pageSize": 20, "list": [finished]})],
+    })
+    r = await c.swap(usdt, wbnb, 7.5010943529027525, min_receive=0.0099)
+    assert r.confirmed is True and r.status == "FINISHED"
+    assert r.order_id == "26090600001864641086" and r.tx_hash == "0x" + "5e" * 32
+    assert abs((r.received_amount or 0) - 0.010002675822947886) < 1e-12
