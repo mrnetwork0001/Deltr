@@ -65,16 +65,6 @@ export const SUBSYSTEMS: Subsystem[] = [
     ],
   },
   {
-    name: "Agent OS ↔ MCP Bridge",
-    path: "agents/agent_os_bridge.ts",
-    summary: "MCP client, JSON-RPC 2.0 router and upstream discovery for the Binance MCP server.",
-    bullets: [
-      "Reports the upstream it could reach, in order: official, shim, none",
-      "Lists Deltr's 18 tools and routes a JSON-RPC request into propose + precheck",
-      "Never claims more than it exercised; unauthenticated 401s are reported as authorized: false",
-    ],
-  },
-  {
     name: "Deterministic Risk Gate",
     path: "risk_gate.py",
     summary: "19 ordered checks, stdlib only, owns equity, drawdown, kill switch and the position registry.",
@@ -84,6 +74,81 @@ export const SUBSYSTEMS: Subsystem[] = [
       "Halt and kill state persist per mode under state/<mode>/ so a restart cannot evade them",
     ],
   },
+  {
+    name: "Agent OS ↔ MCP Bridge",
+    path: "agents/agent_os_bridge.ts",
+    summary: "MCP client, JSON-RPC 2.0 router and upstream discovery for the Binance MCP server.",
+    bullets: [
+      "Reports the upstream it could reach, in order: official, shim, none",
+      "Lists Deltr's 18 tools and routes a JSON-RPC request into propose + precheck",
+      "Never claims more than it exercised; unauthenticated 401s are reported as authorized: false",
+    ],
+  },
+];
+
+// One representative call per subsystem, rendered in the How-it-works trace panel.
+// Numbers are the 2026-09-02 probe (EDGE_EXAMPLE / SIZING_EXAMPLE) and the gate's
+// documented thresholds; nothing here is a live value.
+export type TraceTone = "cmd" | "ok" | "veto" | "gold" | "dim" | "text";
+export interface TraceLine {
+  text: string;
+  tone?: TraceTone;
+}
+
+export const SUBSYSTEM_TRACES: Record<string, { title: string; lines: TraceLine[] }> = {
+  "agents/arbitrage_scout.py": {
+    title: "deltr_market",
+    lines: [
+      { text: "deltr_market symbol=BNBUSDT", tone: "cmd" },
+      { text: "dex    686.19  PancakeSwap V3 fee100 · bsc-mainnet-chain" },
+      { text: "perp   686.34  USDⓈ-M mark · binance-futures-mainnet" },
+      { text: "basis  +2.2 bps · funding(72 h) ≈ 0.0 bps · 9 settlements" },
+      { text: "round trip −16.6 bps  →  net −14.4 bps", tone: "gold" },
+      { text: "actionable: false · NEGATIVE_EDGE", tone: "veto" },
+    ],
+  },
+  "agents/hedger.py": {
+    title: "deltr_propose_hedge",
+    lines: [
+      { text: "deltr_propose_hedge capital_usd=5000 leverage=2", tone: "cmd" },
+      { text: "N = 5000 / (1 + 1/2)  →  4.85 BNB, floored to the 0.01 lot" },
+      { text: "leg 1  BUY   4.85 BNB  PancakeSwap V3     $3,328 notional" },
+      { text: "leg 2  SELL  4.85 BNB  BNBUSDT perp       $1,664 margin" },
+      { text: "precheck → BinanceRiskGate, 19 checks", tone: "dim" },
+      { text: "plan_id issued · single-use · expires in 60 s", tone: "ok" },
+    ],
+  },
+  "risk_gate.py": {
+    title: "deltr_evaluate_risk",
+    lines: [
+      { text: "deltr_evaluate_risk capital_usd=5000 leverage=10", tone: "cmd" },
+      { text: " 1  KILL_SWITCH        off", tone: "ok" },
+      { text: " 2  HALTED_DRAWDOWN    dd 0.0 % < 3 %", tone: "ok" },
+      { text: " 3–6  MALFORMED … HEDGE_MISMATCH   pass", tone: "ok" },
+      { text: " 7  LEVERAGE           10.0 > 3.0 x   VETO", tone: "veto" },
+      { text: "short-circuit at 7 · 12 checks skipped · median 1.5 µs", tone: "dim" },
+      { text: "decision logged · byte-identical on replay", tone: "gold" },
+    ],
+  },
+  "agents/agent_os_bridge.ts": {
+    title: "agent_os_bridge.ts",
+    lines: [
+      { text: "npx tsx agents/agent_os_bridge.ts upstream-status", tone: "cmd" },
+      { text: "official  agent.binance.com/mcp/agentic  →  401 · authorized: false" },
+      { text: "shim      deltr/mcp/binance_shim_server.py  →  reachable" },
+      { text: "upstream: shim", tone: "gold" },
+      { text: "npx tsx agents/agent_os_bridge.ts route '{\"symbol\":\"BNBUSDT\",\"capital_usd\":2000}'", tone: "cmd" },
+      { text: "JSON-RPC 2.0 receipt · plan_id + precheck · nothing executed", tone: "ok" },
+    ],
+  },
+};
+
+// The life of one hedge, in the order the engine runs it.
+export const LIFECYCLE: { step: string; title: string; body: string }[] = [
+  { step: "01", title: "Tick", body: "The hub polls the venues, the Scout prices the edge, the Portfolio marks every position to close and feeds equity into the gate." },
+  { step: "02", title: "Propose", body: "The Hedger sizes both legs and runs the gate as a pre-check. You get a single-use plan_id that expires in 60 s. Nothing executes." },
+  { step: "03", title: "Execute", body: "execute(plan_id) re-quotes the DEX leg, re-runs the gate, places the DEX leg first and sizes the perp from the actual fill." },
+  { step: "04", title: "Receipt", body: "Every price, rate and fill carries a DataSource tag and an age. The receipt embeds the ordered trace and a SHA-256 of it." },
 ];
 
 export interface EdgeRow {
