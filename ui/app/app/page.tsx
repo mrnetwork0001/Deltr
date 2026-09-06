@@ -27,6 +27,15 @@ function mockAllowed(): boolean {
   return devOrigin && !process.env.NEXT_PUBLIC_API;
 }
 
+// The static export on Vercel has no engine behind it. When NEXT_PUBLIC_APP_URL names the live
+// dashboard elsewhere (the VPS), /app/ forwards there; `?stay=1` keeps this copy open for debugging.
+const LIVE_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "";
+function liveElsewhere(): string | null {
+  if (typeof window === "undefined" || !LIVE_APP_URL || !/^https?:\/\//.test(LIVE_APP_URL)) return null;
+  if (LIVE_APP_URL.startsWith(window.location.origin)) return null;
+  return LIVE_APP_URL;
+}
+
 export default function Page() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [mock, setMock] = useState(false);
@@ -53,6 +62,11 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    const live = liveElsewhere();
+    if (live && !new URLSearchParams(window.location.search).has("stay")) {
+      window.location.replace(live);
+      return;
+    }
     const h = openStream({
       onSnapshot: (s) => {
         lastLiveAt.current = Date.now();
@@ -88,8 +102,13 @@ export default function Page() {
       <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
       <main className="mx-auto flex max-w-[1800px] flex-col gap-3 p-4">
         {!snap ? (
-          <div className="flex h-64 items-center justify-center rounded-lg border border-ink-700 bg-ink-900 text-sm text-gray-500">
-            connecting to Deltr…
+          <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-ink-700 bg-ink-900 text-sm text-gray-500">
+            <span>{transport === "down" && LIVE_APP_URL ? "this copy has no engine behind it" : "connecting to Deltr…"}</span>
+            {LIVE_APP_URL ? (
+              <a href={LIVE_APP_URL} className="rounded-md border border-bnb/60 bg-bnb/10 px-3 py-1.5 font-semibold text-bnb hover:bg-bnb/20">
+                Open the live dashboard →
+              </a>
+            ) : null}
           </div>
         ) : (
           <>
