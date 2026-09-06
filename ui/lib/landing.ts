@@ -32,7 +32,7 @@ export const HERO_CLAIMS: { title: string; body: string }[] = [
   },
   {
     title: "MCP-native both ways",
-    body: "Deltr is an MCP server with 18 tools for Claude, Codex, Cursor and VS Code, and its TypeScript bridge discovers the hosted Binance MCP upstream and reports which one it reached.",
+    body: "Deltr is an MCP server with 22 tools for Claude, Codex, Cursor and VS Code, and its TypeScript bridge discovers the hosted Binance MCP upstream and reports which one it reached.",
   },
 ];
 
@@ -80,7 +80,7 @@ export const SUBSYSTEMS: Subsystem[] = [
     summary: "MCP client, JSON-RPC 2.0 router and upstream discovery for the Binance MCP server.",
     bullets: [
       "Reports the upstream it could reach, in order: official, shim, none",
-      "Lists Deltr's 18 tools and routes a JSON-RPC request into propose + precheck",
+      "Lists Deltr's 22 tools and routes a JSON-RPC request into propose + precheck",
       "Never claims more than it exercised; unauthenticated 401s are reported as authorized: false",
     ],
   },
@@ -281,7 +281,7 @@ export const CLIENT_SNIPPETS: ClientSnippet[] = [
     label: "Inspector",
     lang: "bash",
     code: `npx @modelcontextprotocol/inspector --transport http --server-url ${MCP_URL}
-# tools/list -> 18 tools; call deltr_status -> mode "paper", venues ok`,
+# tools/list -> 22 tools; call deltr_status -> mode "paper", venues ok`,
     hint: "Any client. The sanity check before recording.",
   },
 ];
@@ -317,6 +317,10 @@ export const TOOLS: ToolInfo[] = [
   { name: "deltr_reset_halt", use: "clear a drawdown halt once the book has recovered", phase: "operator" },
   { name: "deltr_set_min_edge", use: "runtime min-edge (PAPER may go negative, labelled on screen)", phase: "operator" },
   { name: "deltr_stress", use: "labelled SIMULATED scenarios on the paper book; reset clears", phase: "operator" },
+  { name: "deltr_funding_history", use: "real mainnet funding history for a perpetual and the share of windows that beat the round trip at taker and maker cost", phase: "read" },
+  { name: "deltr_wallet_status", use: "read-only state of the on-chain leg through the Binance Agentic Wallet: installed, signed in, addresses, daily quota, arming state", phase: "read" },
+  { name: "deltr_onchain_swap", use: "request a swap through the Binance Agentic Wallet; the wallet holds the key, applies its own limits and broadcasts (LIVE, opt-in)", phase: "execute" },
+  { name: "deltr_x402_pay", use: "pay an HTTP 402 (x402 / B402) challenge on BNB Smart Chain through the wallet, inside Deltr's allow-list and per-payment ceiling", phase: "execute" },
 ];
 
 export const MCP_RESOURCES = ["deltr://status", "deltr://risk-limits", "deltr://config"];
@@ -334,7 +338,7 @@ export const SKILL_STATUS = {
 
 export const BRIDGE_COMMANDS: { cmd: string; what: string }[] = [
   { cmd: "npx tsx agents/agent_os_bridge.ts upstream-status", what: "official, then shim, then none" },
-  { cmd: "npx tsx agents/agent_os_bridge.ts list", what: "Deltr's 18 tools" },
+  { cmd: "npx tsx agents/agent_os_bridge.ts list", what: "Deltr's 22 tools" },
   { cmd: `npx tsx agents/agent_os_bridge.ts route '{"symbol":"BNBUSDT","capital_usd":2000}'`, what: "JSON-RPC receipt with plan_id + precheck" },
   { cmd: "npx tsx agents/agent_os_bridge.ts serve", what: "JSON-RPC 2.0 on :8788" },
 ];

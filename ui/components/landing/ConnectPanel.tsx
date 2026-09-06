@@ -1,5 +1,5 @@
 "use client";
-// Section 6: client snippets as tabs plus the 18 tools as chips (summary) and a
+// Section 6: client snippets as tabs plus the 22 tools as chips (summary) and a
 // per-phase list of name + use that works without hover.
 import { useState } from "react";
 import { CLIENT_SNIPPETS, MCP_RESOURCES, MCP_URL, STDIO_SNIPPET, TOOLS } from "@/lib/landing";
@@ -66,7 +66,7 @@ export default function ConnectPanel() {
 
         <div className="min-w-0 lg:col-span-2" style={nth(1)}>
         <Card>
-          <h3 className="text-base font-semibold text-gray-100">The 18 tools</h3>
+          <h3 className="text-base font-semibold text-gray-100">The 22 tools</h3>
           <p className="mt-1 text-sm text-gray-400">Coloured by phase; each one is described below. A VETO is final for the same inputs; change capital or leverage instead of retrying.</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {TOOLS.map((t) => (

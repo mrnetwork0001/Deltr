@@ -84,7 +84,7 @@ Flags, wrapper resolution and every JSON shape: [references/cli.md](references/c
 
 ## MCP tools
 
-Deltr is itself an MCP server (streamable HTTP at `/mcp`, stdio with `--mcp`) with 18 tools and three
+Deltr is itself an MCP server (streamable HTTP at `/mcp`, stdio with `--mcp`) with 22 tools and three
 read-only resources; the two-phase pair is `deltr_propose_hedge` -> `deltr_execute_hedge(plan_id)`.
 The table is generated from the server's own `tools/list`: [references/tools.md](references/tools.md).
 

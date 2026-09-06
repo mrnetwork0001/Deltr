@@ -43,7 +43,7 @@ The repo ships `.mcp.json` (Claude Code project scope) and `claude_desktop_confi
 
 Do not run a second `python main.py` next to the stdio one; two engines would mean two books.
 
-## 2. The 18 Deltr tools
+## 2. The 22 Deltr tools
 
 | Tool | Use it for |
 |---|---|
@@ -65,6 +65,10 @@ Do not run a second `python main.py` next to the stdio one; two engines would me
 | `deltr_set_min_edge` | runtime min-edge (PAPER may go negative, labelled on screen) |
 | `deltr_stress` | labelled SIMULATED scenarios on the paper book; `reset` clears |
 | `deltr_edge_report` | the same decomposition as a titled markdown report: waterfall, funding, breakeven verdict, source tags with feed ages, honesty labels |
+| `deltr_funding_history` | real mainnet funding history for a perpetual (up to 2 000 days) and what it says about the carry: share of profitable windows at taker and maker cost |
+| `deltr_wallet_status` | read-only state of the on-chain leg through the Binance Agentic Wallet CLI: installed, signed in, addresses, Binance's remaining daily quota, Deltr's arming state and caps |
+| `deltr_onchain_swap` | request a swap through the Binance Agentic Wallet; the wallet holds the key, decides, applies its own limits on top of Deltr's caps, and broadcasts (LIVE + opt-in only) |
+| `deltr_x402_pay` | pay an HTTP 402 (x402 / B402) challenge on BNB Smart Chain through the wallet: preview the options, apply Deltr's allow-list and per-payment ceiling, then sign |
 
 Resources: `deltr://status`, `deltr://risk-limits`, `deltr://config`.
 
@@ -90,7 +94,7 @@ Deltr's TypeScript bridge (`agents/agent_os_bridge.ts`) reports which upstream i
 
 ```bash
 npx tsx agents/agent_os_bridge.ts upstream-status   # official → shim → none   (works standalone)
-npx tsx agents/agent_os_bridge.ts list              # Deltr's 18 tools (needs `python main.py` running; DELTR_MCP_URL overrides :8000)
+npx tsx agents/agent_os_bridge.ts list              # Deltr's 22 tools (needs `python main.py` running; DELTR_MCP_URL overrides :8000)
 npx tsx agents/agent_os_bridge.ts route '{"symbol":"BNBUSDT","capital_usd":2000}'
 npx tsx agents/agent_os_bridge.ts serve             # JSON-RPC 2.0 on :8788
 ```
@@ -162,5 +166,5 @@ Deltr's own executor never routes orders through the bridge or the shim; it sign
 
 ```bash
 npx @modelcontextprotocol/inspector --transport http --server-url http://127.0.0.1:8000/mcp
-# tools/list → 18 tools; call deltr_status → mode "paper", venues ok
+# tools/list → 22 tools; call deltr_status → mode "paper", venues ok
 ```

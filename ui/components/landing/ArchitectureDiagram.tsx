@@ -99,7 +99,7 @@ export function Diagram() {
       />
 
       {/* Deltr MCP + FastAPI */}
-      <Box x={40} y={120} w={260} h={48} title="Deltr MCP server" sub={["18 tools · deltr/mcp/server.py"]} accent={BRAND.cake} />
+      <Box x={40} y={120} w={260} h={48} title="Deltr MCP server" sub={["22 tools · deltr/mcp/server.py"]} accent={BRAND.cake} />
       <Box x={330} y={120} w={260} h={48} title="FastAPI /api + /ws/stream" sub={["deltr/api/ · serves ui/out"]} />
       <Arrow d="M 690 144 L 592 144" />
       <Label x={600} y={136} text="dashboard" />
