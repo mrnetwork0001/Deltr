@@ -26,6 +26,22 @@ on this machine reports `UNCONNECTED`.
 
 Built for the Binance Agent OS Mini Hackathon (Track A). Apache-2.0, skill folder MIT.
 
+## Try it live
+
+| What | Where |
+|---|---|
+| Landing page | <https://usedeltrapp.vercel.app/> |
+| Dashboard, real mainnet data, **PAPER / LIVE** switch in the header | <https://usedeltrapp.vercel.app/app/> |
+| MCP, PAPER engine (22 tools) | `claude mcp add deltr --transport http https://usedeltrapp.vercel.app/mcp` |
+| MCP, LIVE engine | `claude mcp add deltr-live --transport http https://usedeltrapp.vercel.app/live/mcp` |
+
+The public instances are **read-only**: every read tool and every panel works for anyone; the
+mutating tools and `POST` routes answer `READ_ONLY` unless the request carries that engine's
+`DELTR_API_TOKEN`. The header switch changes which engine the page *reads*; it cannot change a mode,
+and neither can any tool. The two engines are separate processes on one VPS, each with its own opt-in
+(`docs/VPS_RUNBOOK.md`). The LIVE engine shows `offline` until its keys, acknowledgements and wallet
+session are in place on that box.
+
 | # | Claim | What backs it |
 |---|---|---|
 | 1 | **A real strategy on a real two-venue path.** | Long DEX / short perp, delta-neutral by construction: the pairing is re-derived from the legs, never trusted from a flag, and \|dex_qty - perp_qty\| must be inside one lot step. `net(H) = basis_entry + funding(H) - round_trip - assumed_exit_basis` over an explicit horizon (72 h, 9 settlements, by default). The DEX leg is quoted on-chain with `slot0` + QuoterV2 through `eth_call`, with gas priced into the round trip. |
@@ -69,17 +85,21 @@ It is here so the strategy above is auditable line by line.
                               ║  (risk_gate.py)    ║  1.5-2.5 µs, owns equity/dd/registry
                               ╚═════════╤══════════╝
                                         ▼
-                         PaperRouter │ TestnetRouter (LIMIT IOC, signed)
+          PaperRouter │ TestnetRouter (LIMIT IOC) │ LiveRouter (GTX post-only + Agentic Wallet)
                                         │
         ┌───────────────────────────────┼──────────────────────────────┐
         ▼                               ▼                              ▼
- PancakeSwap V3 (BSC mainnet)   Binance USDS-M Futures testnet   Spot data mirror
- slot0 + QuoterV2 via eth_call  premiumIndex, bookTicker, orders  bookTicker (reference)
- source: bsc-mainnet-chain      source: binance-futures-testnet   source: binance-spot-mirror
+ PancakeSwap V3 (BSC mainnet)   Binance USDS-M Futures            Spot data mirror
+ slot0 + QuoterV2 via eth_call  mainnet data (keyless) in every   bookTicker (reference)
+ LIVE leg: Binance Agentic      mode; orders: testnet or, in      source: binance-spot-mirror
+ Wallet CLI signs the swap      LIVE, fapi.binance.com
+ source: bsc-mainnet-chain      source: binance-futures-mainnet
+   / binance-agentic-wallet             / binance-futures-testnet
 ```
 
 Provenance: every price, fill and history point carries a `DataSource` tag (`bsc-mainnet-chain`,
-`binance-futures-testnet`, `binance-spot-mirror`, `paper`, `replay`); the dashboard shows feed ages.
+`binance-futures-mainnet`, `binance-futures-testnet`, `binance-spot-mirror`, `binance-agentic-wallet`,
+`paper`, `replay`, `simulated`); the dashboard shows feed ages.
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## 60-second quickstart (Python only)
@@ -105,10 +125,11 @@ one-liners. If :8000 is taken, add `--port 8765` (3000/3001 are reserved for `np
 | `.venv/bin/python main.py --mode live` | **REAL MONEY.** Refuses to start until every requirement below is present, naming the first one missing |
 | `.venv/bin/python main.py --execution-style taker` | LIVE/TESTNET: cross the spread instead of posting. The measured economics say do not |
 | `.venv/bin/python main.py --auto` | PAPER only: auto-execute gate-approved actionable opportunities |
-| `.venv/bin/python -m pytest -q` | 633 offline, deterministic tests in about 6 s |
+| `.venv/bin/python main.py --host 0.0.0.0 --port 8000` | bind all interfaces (the VPS showcase); default is loopback only |
+| `.venv/bin/python -m pytest -q` | 671 offline, deterministic tests in about 8 s |
 
 Node is only needed for the bridge (`npx tsx agents/agent_os_bridge.ts ...`) and `npm run dev`; the
-dashboard is a static export in `ui/out/` served by FastAPI. Python 3.11+ (verified on 3.11 and 3.14).
+dashboard is a static export in `ui/out/` served by FastAPI. Python 3.11+ (verified on 3.11, 3.12 and 3.14).
 
 ## Edge math: why the gate often says no
 
@@ -168,6 +189,10 @@ curl -s -X POST http://127.0.0.1:8000/mcp -H 'Content-Type: application/json' \
 | `deltr_prompt(text)` | natural language to intent to plan to pre-check; propose-only, never executes | no |
 | `deltr_positions`, `deltr_risk_log`, `deltr_receipt`, `deltr_activity` | book, gate decisions, one receipt by id, who called what | no |
 | `deltr_kill_switch`, `deltr_reset_halt`, `deltr_set_min_edge`, `deltr_stress` | operator controls; stress mutates only the paper book and is badged SIMULATED | no |
+| `deltr_funding_history(symbol, lookback_days)` | real mainnet funding history (up to 2,000 days) and the share of windows in which the carry beats the round trip at taker and at maker cost | no |
+| `deltr_wallet_status` | the on-chain leg's state through the Binance Agentic Wallet CLI: installed, signed in, addresses, Binance's remaining daily quota, Deltr's arming state and caps | no |
+| `deltr_onchain_swap(from_token, to_token, amount)` | request a swap through the Binance Agentic Wallet; the wallet holds the key, decides, applies its own limits on top of Deltr's caps, and broadcasts | yes (LIVE + on-chain opt-in only) |
+| `deltr_x402_pay(payment_required)` | pay an HTTP 402 (x402 / B402) challenge on BNB Smart Chain through the wallet, inside Deltr's network allow-list and per-payment ceiling | yes (on-chain opt-in only) |
 
 Resources: `deltr://status`, `deltr://risk-limits`, `deltr://config` (redacted). Errors come back as
 `{"error": {"code", "message"}}`; a VETO is final for the same inputs. Full setup, including the
@@ -270,7 +295,7 @@ API (`DELTR_API`, default `http://127.0.0.1:8000`) and never prints secrets.
 | Binance tool names | the shim serves 6 of its 9 tools under official Agent OS names (`spot.ticker24hr`, `spot.depth`, `futures_usds.premiumIndexKlineData`, `futures_usds.exchangeInformation`, `futures_usds.futuresAccountBalanceV3`, `futures_usds.positionInformationV2`) read from `tests/fixtures/binance_mcp_tools.json`. Those names were **transcribed from a third-party published inventory dated 2026-09-02, not captured from our own session**, and are not claimed to have been verified against Binance; the fixture's `provenance` block says so and `tests/test_shim_tool_names.py` enforces it. That inventory lists no write-capable trade tool, so `place_futures_order`, `set_leverage` and `get_funding_rate` keep Deltr-local names. See `docs/MCP_SETUP.md` § Tool-name compatibility |
 | Order path | the Python executor never routes an order through an upstream MCP. Testnet orders go straight to the Binance Futures testnet REST API, signed locally, behind the gate; LIVE perp orders go the same way to `fapi.binance.com`. The LIVE on-chain leg goes to the Binance Agentic Wallet CLI, which signs it. The bridge forwards only `get_*` upstream calls; trade-shaped calls are refused and routed through Deltr's gate |
 | Mainnet orders | **none placed.** LIVE is implemented and covered by tests against fakes; it has never been armed on this machine, no wallet has been created or funded, and `baw wallet status` reports `UNCONNECTED`. Nothing in this repo claims a mainnet fill |
-| `fapi.binance.com` from this machine | reachable and answering 200 **only through a public resolver**: this machine's default resolver returns nothing for the hostname. Deltr raises an actionable DNS error naming both `dig` commands rather than substituting another venue or simulated data. Fix the resolver before arming anything |
+| `fapi.binance.com` from this machine | reachable and answering 200 **only through a public resolver**: this build machine's default resolver returns nothing for the hostname. Deltr raises an actionable DNS error naming both `dig` commands rather than substituting another venue or simulated data. The public showcase VPS resolves it and runs on live mainnet data |
 
 ```bash
 npx tsx agents/agent_os_bridge.ts upstream-status     # official -> shim -> none, with the reason
@@ -351,16 +376,33 @@ address and never a secret:
 | Caps | $250 per trade (a ceiling: `DELTR_LIVE_MAX_NOTIONAL_USD` can only lower it), $1,000 aggregate |
 | Market data | the same keyless mainnet client PAPER and TESTNET use. A credentialed client never polls a public endpoint in any mode |
 
+## Public read-only deployment
+
+The showcase above is `python main.py` with four settings, installed by `scripts/vps_install.sh` on a
+box that already ran other services (it creates only its own user, venv, state dir, env file and
+unit; `INSTANCE=live` installs the second, disarmed engine):
+
+| Setting | Effect |
+|---|---|
+| `DELTR_PUBLIC_READONLY=1` | every mutating `POST` route and MCP tool answers `READ_ONLY` without the token |
+| `DELTR_API_TOKEN` | the `X-Deltr-Token` header value that re-enables them for you |
+| `DELTR_MCP_ALLOWED_HOSTS` | the public `ip:port` / hostnames the MCP transport accepts besides loopback (proxies may send the bare host; it is admitted too) |
+| `DELTR_CORS_ORIGINS` | the browser origin allowed to call the API (the Vercel site) |
+
+Vercel serves the static site and proxies `/api`, `/mcp` (PAPER) and `/live/api`, `/live/mcp` (LIVE)
+to the two engines, so the browser only ever talks to one https origin. Step by step:
+[docs/VPS_RUNBOOK.md](docs/VPS_RUNBOOK.md).
+
 ## Tests and the measured benchmark
 
 ```bash
-.venv/bin/python -m pytest -q                                   # 633 passed, 9 skipped in about 6 s (offline)
+.venv/bin/python -m pytest -q                                   # 671 passed, 9 skipped in about 8 s (offline)
 .venv/bin/python -m pytest -q -s tests/test_risk_gate.py        # prints the gate median measured here
 .venv/bin/python -c "import risk_gate; print(risk_gate.benchmark())"   # (median_us, p99_us, amortised_us)
 npm run typecheck && npm run bridge:test                        # TypeScript bridge (Node only)
 ```
 
-Counts are whatever the suite prints: 633 passed, 9 skipped on 2026-09-03 with the command above.
+Counts are whatever the suite prints: 671 passed, 9 skipped on 2026-09-06 with the command above.
 Across repeated runs on this Apple M-series laptop the gate median lands between **1.5 and 2.5 µs**
 (p99 between 2.0 and 2.9 µs); the number in your banner is the one that counts, and the test asserts
 only that it stays under 5 µs so slower machines stay green. The suite is offline and deterministic:
