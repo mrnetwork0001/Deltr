@@ -613,3 +613,15 @@ async def test_wallet_address_parses_the_real_cli_shape_and_keys_by_chain_id_and
     out = await c.wallet_address()
     assert out["56"] == evm and out["BSC"] == evm and out["1"] == evm
     assert out["CT_501"].startswith("Asvq")
+
+
+async def test_quote_parses_the_real_cli_shape_and_derives_min_receive_from_the_slippage_fraction():
+    """`baw market-order quote --json` (1.9.0, seen 2026-09-06) answers fromCoinAmount / toCoinAmount and
+    the applied slippage as a fraction. The wrapper used to read 0 and refuse every swap."""
+    payload = {"fromCoinSymbol": "USDT", "fromCoinAmount": "7.46", "toCoinSymbol": "WBNB",
+               "toCoinAmount": "0.009953111387266435", "slippage": 0.005}
+    c = client({"market-order quote": ok(payload)})
+    q = await c.quote("0x" + "5" * 40, "0x" + "b" * 40, 7.46)
+    assert abs(q.to_amount - 0.009953111387266435) < 1e-12
+    assert q.min_receive is not None and abs(q.min_receive - 0.009953111387266435 * 0.995) < 1e-12
+    assert q.price_impact_pct is None

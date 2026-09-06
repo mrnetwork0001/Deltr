@@ -662,13 +662,22 @@ class AgenticWalletClient:
             "--slippage", str(slippage),
         )
         d = data if isinstance(data, Mapping) else {}
+        # baw 1.9 answers {"fromCoinSymbol", "fromCoinAmount", "toCoinSymbol", "toCoinAmount", "slippage"}
+        # (slippage as a fraction, 0.005 = 0.5 %); older spellings are kept for compatibility.
+        to_amount = _num(_first(d, "toCoinAmount", "toCoinQty", "toTokenAmount", "toTokenQty", "toAmount",
+                                "receiveAmount", "outAmount", "amountOut")) or 0.0
+        min_receive = _num(_first(d, "minReceiveAmount", "minimumReceived", "minReceive", "minAmountOut", "minToCoinAmount"))
+        applied = _num(_first(d, "slippage", "slippageTolerance"))
+        if min_receive is None and to_amount > 0 and applied is not None and 0 <= applied < 1:
+            # the CLI reports the tolerance it applied, not the floor: derive the worst case
+            min_receive = to_amount * (1.0 - applied)
         return SwapQuote(
             chain_id=chain,
             from_token=str(from_token),
             to_token=str(to_token),
             from_amount=qty,
-            to_amount=_num(_first(d, "toTokenAmount", "toAmount", "receiveAmount", "outAmount", "amountOut")) or 0.0,
-            min_receive=_num(_first(d, "minReceiveAmount", "minimumReceived", "minReceive", "minAmountOut")),
+            to_amount=to_amount,
+            min_receive=min_receive,
             price_impact_pct=_num(_first(d, "priceImpact", "priceImpactPercentage", "priceImpactPct", "impact")),
             slippage=str(slippage),
             raw=dict(d),
@@ -767,10 +776,11 @@ class AgenticWalletClient:
         qty: float,
         order_id: Optional[str],
     ) -> SwapResult:
-        status = str(_first(d, "status", "orderStatus", "state") or "PENDING").upper()
-        tx_hash = _first(d, "txHash", "transactionHash", "hash", "tx")
+        status = str(_first(d, "status", "orderStatus", "swapStatus", "state") or "PENDING").upper()
+        tx_hash = _first(d, "txHash", "transactionHash", "txId", "transactionId", "hash", "tx")
         tx_hash = str(tx_hash) if tx_hash else None
-        received = _num(_first(d, "toTokenAmount", "receivedAmount", "actualToAmount", "toAmount", "filledAmount"))
+        received = _num(_first(d, "toCoinAmount", "toCoinQty", "toTokenAmount", "toTokenQty", "receivedAmount",
+                               "actualToAmount", "toAmount", "filledAmount"))
         confirmed = status in {"FINISHED", "SUCCESS", "CONFIRMED", "FILLED"} and bool(tx_hash)
         if status in {"FAILED", "CANCELLED", "REJECTED"}:
             raise AgenticWalletError(
@@ -894,16 +904,16 @@ def fill_from_swap(
     if not result.confirmed or not result.tx_hash:
         raise AgenticWalletError(
             "SWAP_UNCONFIRMED",
-            f"the wallet CLI has not confirmed order {result.order_id or '<unknown>'} (status {result.status}); "
-            "Deltr does not record an unconfirmed swap as a fill.",
+            f"the wallet CLI has not confirmed order {result.order_id or '<unknown>'} (status {result.status}; "
+            f"fields seen: {sorted(result.raw.keys())[:12]}); Deltr does not record an unconfirmed swap as a fill.",
             remedy="check `baw market-order list --orderId <id> --json` or `baw wallet tx-history --tx <hash> --json`.",
         )
     received = result.received_amount
     if received is None or not (received > 0) or not (result.from_amount > 0):
         raise AgenticWalletError(
             "SWAP_UNCONFIRMED",
-            f"order {result.order_id or '<unknown>'} is confirmed but the CLI reported no received amount; "
-            "Deltr does not invent one.",
+            f"order {result.order_id or '<unknown>'} is confirmed but the CLI reported no received amount "
+            f"(fields seen: {sorted(result.raw.keys())[:12]}); Deltr does not invent one.",
         )
     # Buying base with quote: price = quote spent / base received.  Selling base for quote:
     # price = quote received / base sold.  Either way the executed rate uses only reported amounts.
