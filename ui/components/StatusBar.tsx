@@ -139,15 +139,54 @@ export function ddKind(state: DdState | null | undefined): StatusKind {
 }
 
 // --------------------------------------------------------------------------- the header
+export interface EngineChoice {
+  key: string;
+  label: string;
+}
+
 export interface StatusBarProps {
   status: SystemStatus | null;
   portfolio: PortfolioSnapshot | null;
   mock: boolean;
   transport: "ws" | "poll" | "down";
   lastUpdate: string | null;
+  /** More than one engine (e.g. the public PAPER and LIVE showcases) shows a switcher. */
+  engines?: EngineChoice[];
+  engine?: string;
+  onEngine?: (key: string) => void;
 }
 
-export default function StatusBar({ status, mock, transport, lastUpdate }: StatusBarProps) {
+/** Segmented control that changes which engine the dashboard reads. It never changes a mode:
+ *  each engine runs its own process with its own opt-in. */
+function EngineSwitch({ engines, engine, onEngine }: { engines: EngineChoice[]; engine: string; onEngine: (k: string) => void }) {
+  return (
+    <div role="tablist" aria-label="Engine" className="inline-flex rounded-md border border-ink-700 bg-ink-900 p-0.5">
+      {engines.map((e) => {
+        const on = e.key === engine;
+        const live = e.key === "live";
+        return (
+          <button
+            key={e.key}
+            role="tab"
+            aria-selected={on}
+            onClick={() => onEngine(e.key)}
+            title={live ? "the LIVE engine: real mainnet orders, read-only here" : "the PAPER engine: simulated fills on real mainnet prices"}
+            className="rounded px-2.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide transition"
+            style={
+              on
+                ? { background: live ? STATUS.critical : "#F0B90B", color: "#07090f" }
+                : { color: "#9ca3af" }
+            }
+          >
+            {e.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function StatusBar({ status, mock, transport, lastUpdate, engines = [], engine = "", onEngine }: StatusBarProps) {
   const mode = status?.mode ?? "paper";
   const override = (status?.min_edge_bps ?? 0) < 0;
   const stress = status?.stress_active ?? null;
@@ -161,9 +200,15 @@ export default function StatusBar({ status, mock, transport, lastUpdate }: Statu
           <span className="text-[15px] font-bold tracking-tight text-gray-50">Deltr</span>
         </Link>
         <span aria-hidden className="h-5 w-px bg-ink-700" />
-        <Chip color={mode === "testnet" ? "#1FC7D4" : mode === "live" ? STATUS.critical : "#F0B90B"} solid>
-          {mode.toUpperCase()}
+        {engines.length > 1 && onEngine ? (
+          <EngineSwitch engines={engines} engine={engine} onEngine={onEngine} />
+        ) : null}
+        <Chip color={mode === "testnet" ? "#1FC7D4" : mode === "live" ? STATUS.critical : "#F0B90B"} solid title="the mode this engine runs in; no tool or button changes it">
+          {status ? mode.toUpperCase() : "…"}
         </Chip>
+        {status?.real_funds_armed ? (
+          <StatusTag kind="critical">REAL FUNDS ARMED</StatusTag>
+        ) : null}
         {status?.replay ? (
           <Chip color="#1FC7D4" title="Driven by ReplayHub: recorded ticks, not live feeds">
             <Rewind size={11} /> REPLAY

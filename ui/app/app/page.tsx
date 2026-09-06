@@ -3,7 +3,7 @@
 // accelerator, automatic fallback to the bundled mock so the page is never blank.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot } from "@/lib/types";
-import { fetchMockSnapshot, fetchSnapshot, openStream } from "@/lib/api";
+import { engines, fetchMockSnapshot, fetchSnapshot, openStream, setEngine } from "@/lib/api";
 import StatusBar, { KpiStrip } from "@/components/StatusBar";
 import SpreadChart from "@/components/SpreadChart";
 import EdgeWaterfall from "@/components/EdgeWaterfall";
@@ -38,8 +38,17 @@ function liveElsewhere(): string | null {
   return LIVE_APP_URL;
 }
 
+const ENGINES = engines();
+
+function engineFromUrl(): string {
+  if (typeof window === "undefined" || !ENGINES.length) return ENGINES[0]?.key ?? "";
+  const q = new URLSearchParams(window.location.search).get("engine");
+  return ENGINES.some((e) => e.key === q) ? (q as string) : ENGINES[0].key;
+}
+
 export default function Page() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [engine, setEngineKey] = useState<string>("");
   const [mock, setMock] = useState(false);
   const [transport, setTransport] = useState<"ws" | "poll" | "down">("down");
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
@@ -63,7 +72,28 @@ export default function Page() {
     }
   }, []);
 
+  // pick the engine from ?engine= once, before the first request
   useEffect(() => {
+    setEngineKey(engineFromUrl());
+  }, []);
+
+  const switchEngine = useCallback((key: string) => {
+    const def = ENGINES.find((e) => e.key === key);
+    if (!def) return;
+    const u = new URL(window.location.href);
+    u.searchParams.set("engine", key);
+    window.history.replaceState(null, "", u.toString());
+    setSnap(null);
+    setMock(false);
+    setTransport("down");
+    setSelectedTrace(null);
+    lastLiveAt.current = 0;
+    setEngineKey(key);
+  }, []);
+
+  useEffect(() => {
+    if (ENGINES.length && !engine) return; // waiting for the URL read above
+    setEngine(ENGINES.find((e) => e.key === engine)?.base ?? "");
     const h = openStream({
       onSnapshot: (s) => {
         lastLiveAt.current = Date.now();
@@ -77,7 +107,7 @@ export default function Page() {
       },
     });
     return () => h.stop();
-  }, [loadMock]);
+  }, [loadMock, engine]);
 
   // Forward to the live dashboard only when nothing has answered here for 6 s.
   useEffect(() => {
@@ -106,11 +136,26 @@ export default function Page() {
 
   return (
     <div className="min-h-screen">
-      <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
+      <StatusBar
+        status={status}
+        portfolio={portfolio}
+        mock={mock}
+        transport={transport}
+        lastUpdate={lastUpdate}
+        engines={ENGINES}
+        engine={engine}
+        onEngine={switchEngine}
+      />
       <main className="mx-auto flex max-w-[1800px] flex-col gap-3 p-4">
         {!snap ? (
           <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-ink-700 bg-ink-900 text-sm text-gray-500">
-            <span>{transport === "down" && LIVE_APP_URL ? "this copy has no engine behind it" : "connecting to Deltr…"}</span>
+            <span>
+              {transport === "down" && LIVE_APP_URL
+                ? "this copy has no engine behind it"
+                : engine === "live"
+                  ? "connecting to the LIVE engine… it stays offline until its keys, acknowledgements and wallet session are in place on the box"
+                  : "connecting to Deltr…"}
+            </span>
             {LIVE_APP_URL ? (
               <a href={LIVE_APP_URL} className="rounded-md border border-bnb/60 bg-bnb/10 px-3 py-1.5 font-semibold text-bnb hover:bg-bnb/20">
                 Open the live dashboard →

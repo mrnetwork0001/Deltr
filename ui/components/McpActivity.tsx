@@ -3,7 +3,7 @@
 import { ArrowDownLeft, ArrowUpRight, Check, X } from "lucide-react";
 import type { McpActivity as Row, SystemStatus } from "@/lib/types";
 import { STATUS, clockMs, ms } from "@/lib/format";
-import { API_BASE } from "@/lib/api";
+import { apiBase } from "@/lib/api";
 import { Chip, Panel } from "@/components/StatusBar";
 
 export interface McpActivityProps {
@@ -13,8 +13,9 @@ export interface McpActivityProps {
 }
 
 function mcpUrl(): string {
-  if (API_BASE) return API_BASE.replace(/^https?:\/\//, "") + "/mcp";
-  if (typeof window !== "undefined") return `${window.location.host}/mcp`;
+  const b = apiBase();
+  if (/^https?:\/\//.test(b)) return b.replace(/^https?:\/\//, "") + "/mcp";
+  if (typeof window !== "undefined") return `${window.location.host}${b}/mcp`;
   return ":8000/mcp";
 }
 

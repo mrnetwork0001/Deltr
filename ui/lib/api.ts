@@ -19,6 +19,36 @@ import type {
 
 export const API_BASE: string = process.env.NEXT_PUBLIC_API ?? "";
 
+// --------------------------------------------------------------------------- engines
+// A deployment can expose more than one engine (the public showcase runs a PAPER one and a
+// LIVE one, both read-only). NEXT_PUBLIC_ENGINES lists them as "key=base|key=base", where base
+// is a path prefix the host proxies ("/live") or an absolute origin. Empty base = this origin.
+export interface EngineDef {
+  key: string;
+  label: string;
+  base: string;
+}
+
+export function engines(): EngineDef[] {
+  const raw = process.env.NEXT_PUBLIC_ENGINES ?? "";
+  const out: EngineDef[] = [];
+  for (const part of raw.split("|")) {
+    const [key, base = ""] = part.split("=");
+    const k = key.trim();
+    if (k) out.push({ key: k, label: k.toUpperCase(), base: base.trim().replace(/\/$/, "") });
+  }
+  return out;
+}
+
+let engineBase = "";
+/** Select the engine every call below talks to; "" is the default (same-origin) engine. */
+export function setEngine(base: string): void {
+  engineBase = base.replace(/\/$/, "");
+}
+export function apiBase(): string {
+  return `${API_BASE}${engineBase}`;
+}
+
 export class DeltrApiError extends Error {
   code: string;
   status: number;
@@ -46,13 +76,13 @@ async function parseError(res: Response): Promise<DeltrApiError> {
 }
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", signal });
+  const res = await fetch(`${apiBase()}${path}`, { cache: "no-store", signal });
   if (!res.ok) throw await parseError(res);
   return (await res.json()) as T;
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Deltr-Source": "ui" },
     body: JSON.stringify(body ?? {}),
@@ -130,8 +160,9 @@ export interface StreamHandle {
 }
 
 function wsUrl(): string {
-  const base = API_BASE || (typeof window !== "undefined" ? window.location.origin : "");
-  return base.replace(/^http/, "ws") + "/ws/stream";
+  const b = apiBase();
+  const abs = /^https?:\/\//.test(b) ? b : (typeof window !== "undefined" ? window.location.origin : "") + b;
+  return abs.replace(/^http/, "ws") + "/ws/stream";
 }
 
 /**
