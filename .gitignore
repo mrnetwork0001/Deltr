@@ -40,3 +40,6 @@ logs/
 # Deltr: committed static UI export (served by FastAPI) and runtime state
 !ui/out/
 state/
+
+# Vercel project link
+.vercel/

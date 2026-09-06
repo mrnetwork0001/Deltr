@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 
 import asyncio
 import logging
@@ -43,7 +44,11 @@ from deltr.models import AgentEvent, utcnow
 log = logging.getLogger("deltr.api")
 
 UI_OUT_DIR = REPO_ROOT / "ui" / "out"
-CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+# Extra browser origins may be admitted with DELTR_CORS_ORIGINS="https://deltrapp.vercel.app,https://example.com"
+# (the front end can be hosted elsewhere, e.g. Vercel, while this process runs on a VPS).
+CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"] + [
+    o.strip() for o in os.environ.get("DELTR_CORS_ORIGINS", "").split(",") if o.strip()
+]
 WS_SNAPSHOT_INTERVAL_S = 1.0
 WS_EVENT_TOPICS = {"gate", "fill", "position", "mcp", "stress", "plan"}
 WS_LOG_LEVELS = {"warn", "error"}
