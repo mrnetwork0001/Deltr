@@ -1,7 +1,8 @@
 // Section 4: the round-trip cost model as a waterfall (inline SVG) plus the
 // worked example table and the sizing example. Numbers come from lib/landing.ts.
 import { EDGE_EXAMPLE, SIZING_EXAMPLE } from "@/lib/landing";
-import { Card, Mono, Section, SERIES } from "./Section";
+import Reveal from "./Reveal";
+import { Card, Mono, Section, SERIES, nth } from "./Section";
 
 interface Step {
   label: string;
@@ -101,7 +102,13 @@ function Waterfall() {
         const labelY = goesUp ? b.yTop - 8 : b.yTop + b.h + 18;
         return (
           <g key={b.label}>
-            <path d={barPath(b.x, b.yTop, barW, b.h, goesUp ? "top" : "bottom")} fill={b.color} opacity={b.kind === "total" ? 1 : 0.85} />
+            <path
+              d={barPath(b.x, b.yTop, barW, b.h, goesUp ? "top" : "bottom")}
+              fill={b.color}
+              opacity={b.kind === "total" ? 1 : 0.85}
+              className="grow-y"
+              style={{ ...nth(i), transformOrigin: `${b.x + barW / 2}px ${y(b.from)}px` }}
+            />
             {connector}
             {labelled.has(b.label) ? (
               <text x={b.x + barW / 2} y={labelY} fill="#e5e7eb" fontSize={14} fontWeight={600} textAnchor="middle" fontFamily={MONO}>
@@ -134,8 +141,9 @@ export default function EdgeExplainer() {
         </>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+      <Reveal className="stagger grid gap-4 lg:grid-cols-5">
+        <div className="min-w-0 lg:col-span-3" style={nth(0)}>
+        <Card>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-base font-semibold text-gray-100">Worked example at the probe</h3>
             <span className="font-mono text-xs text-gray-500">BNBUSDT · mark {e.perpMark.toFixed(2)} vs DEX exec {e.dexExec.toFixed(2)}</span>
@@ -167,8 +175,9 @@ export default function EdgeExplainer() {
             <Mono>--min-edge-bps -20</Mono> override so the mechanics are visible; the amber chip stays on screen the whole time.
           </p>
         </Card>
+        </div>
 
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2" style={nth(1)}>
           <Card>
             <h3 className="text-base font-semibold text-gray-100">Round-trip components</h3>
             <div className="mt-3 overflow-x-auto">
@@ -222,7 +231,7 @@ export default function EdgeExplainer() {
             <p className="mt-2 text-sm text-gray-400">At {s.price.toFixed(2)} per BNB. Positions are marked to close, net of the estimated exit round trip.</p>
           </Card>
         </div>
-      </div>
+      </Reveal>
     </Section>
   );
 }

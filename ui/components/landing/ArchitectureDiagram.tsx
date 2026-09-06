@@ -2,7 +2,8 @@
 // Gate -> routers -> venues, with the Agent OS bridge on the right). The SVG
 // keeps a minimum width close to its viewBox width and scrolls horizontally on
 // narrow screens, so no label renders below about 11.5 px.
-import { Section, SERIES, BRAND } from "./Section";
+import Reveal from "./Reveal";
+import { Section, SERIES, BRAND, nth } from "./Section";
 
 const INK = "#0b0f19";
 const RAISED = "#111827";
@@ -195,12 +196,12 @@ export default function ArchitectureDiagram() {
       title="One process, one engine, two transports"
       lead="MCP hosts and the REST dashboard share one Engine. Every order crosses the same gate and the same router before it reaches a venue, and every number on screen carries the source it came from."
     >
-      <div className="overflow-x-auto rounded-lg border border-ink-700 bg-ink-900 p-2">
+      <Reveal className="overflow-x-auto rounded-lg border border-ink-700 bg-ink-900 p-2">
         <Diagram />
-      </div>
+      </Reveal>
       <p className="mt-2 font-mono text-xs text-gray-500 lg:hidden">Scroll sideways to see the whole diagram.</p>
-      <div className="mt-6 grid gap-3 text-sm text-gray-400 sm:grid-cols-2">
-        <div className="rounded-lg border border-ink-700 bg-ink-900 p-4">
+      <Reveal i={1} className="stagger mt-6 grid gap-3 text-sm text-gray-400 sm:grid-cols-2">
+        <div className="rounded-lg border border-ink-700 bg-ink-900 p-4" style={nth(0)}>
           <p className="font-mono text-xs uppercase tracking-wide text-gray-500">Modes</p>
           <table className="mt-2 w-full text-left">
             <thead className="text-xs text-gray-500">
@@ -228,7 +229,7 @@ export default function ArchitectureDiagram() {
           </table>
           <p className="mt-2 text-xs text-gray-500">There is no live/production mode by design.</p>
         </div>
-        <div className="rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <div className="rounded-lg border border-ink-700 bg-ink-900 p-4" style={nth(1)}>
           <p className="font-mono text-xs uppercase tracking-wide text-gray-500">Repository map</p>
           <ul className="mt-2 space-y-1 font-mono text-xs text-gray-300">
             <li>main.py <span className="text-gray-500">one-command launcher</span></li>
@@ -243,7 +244,7 @@ export default function ArchitectureDiagram() {
             <li>tests/ <span className="text-gray-500">offline, deterministic; replay fixture recorded live</span></li>
           </ul>
         </div>
-      </div>
+      </Reveal>
     </Section>
   );
 }

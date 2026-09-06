@@ -2,7 +2,8 @@
 // owner) and what Deltr never does.
 import { Ban, Check } from "lucide-react";
 import { GATE_CHECKS, HARD_INVARIANTS, NEVER_DOES } from "@/lib/landing";
-import { Card, Mono, Section, STATUS, Tag } from "./Section";
+import Reveal from "./Reveal";
+import { Card, Mono, Section, STATUS, Tag, nth } from "./Section";
 
 const OWNER_COLOR: Record<string, string> = {
   gate: "#F0B90B",
@@ -31,21 +32,21 @@ export default function SafetyTable() {
         </>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {HARD_INVARIANTS.map((inv) => (
-          <div key={inv.constant} className="rounded-lg border border-ink-700 bg-ink-900 p-4">
+      <Reveal className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {HARD_INVARIANTS.map((inv, i) => (
+          <div key={inv.constant} className="rounded-lg border border-ink-700 bg-ink-900 p-4 transition-colors duration-300 hover:border-gray-600" style={nth(i)}>
             <p className="text-xs text-gray-500">{inv.name}</p>
             <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-gray-100">{inv.value}</p>
             <p className="mt-1 font-mono text-xs text-gray-500">{inv.constant}</p>
           </div>
         ))}
-      </div>
+      </Reveal>
       <p className="mt-3 text-sm text-gray-400">
         <Mono>RiskLimits</Mono> clamps the three spec invariants so they can be tightened but never loosened. A drawdown of 2 % warns; 3 % halts
         and stays halted until the book recovers.
       </p>
 
-      <div className="mt-8 overflow-x-auto rounded-lg border border-ink-700 bg-ink-900">
+      <Reveal className="mt-8 overflow-x-auto rounded-lg border border-ink-700 bg-ink-900">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-ink-800 text-xs uppercase tracking-wide text-gray-500">
             <tr>
@@ -55,9 +56,9 @@ export default function SafetyTable() {
               <th className="px-3 py-2 font-medium">input owner</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="stagger">
             {GATE_CHECKS.map((c) => (
-              <tr key={c.code} className="border-t border-ink-700 align-top">
+              <tr key={c.code} className="border-t border-ink-700 align-top transition-colors hover:bg-ink-800/60" style={nth(c.n - 1)}>
                 <td className="px-3 py-2 font-mono tabular-nums text-gray-500">{c.n}</td>
                 <td className="px-3 py-2 font-mono text-gray-100">{c.code}</td>
                 <td className="px-3 py-2 text-gray-300">{c.threshold}</td>
@@ -68,7 +69,7 @@ export default function SafetyTable() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Reveal>
       <p className="mt-3 text-sm text-gray-400">
         Why check 10 has a floor: the proposer&apos;s own risk estimate is only a lower bound. The gate assumes the full round trip is paid and a
         100 bps adverse basis move, so an optimistic caller cannot talk its way past the 2 % rule. Only the Executor assembles a gate input;
@@ -78,17 +79,19 @@ export default function SafetyTable() {
       <h3 className="mt-10 flex items-center gap-2 text-lg font-semibold text-gray-100">
         <Ban size={18} style={{ color: STATUS.critical }} /> What Deltr never does
       </h3>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {NEVER_DOES.map((n) => (
-          <Card key={n.never} className="!p-4">
+      <Reveal className="stagger mt-4 grid gap-3 md:grid-cols-2">
+        {NEVER_DOES.map((n, i) => (
+          <div key={n.never} style={nth(i)}>
+          <Card className="!p-4">
             <p className="flex items-start gap-2 text-[15px] font-semibold text-gray-100">
               <Check size={16} className="mt-1 shrink-0" style={{ color: STATUS.good }} />
               {n.never}
             </p>
             <p className="mt-1.5 pl-6 text-sm text-gray-400">{n.how}</p>
           </Card>
+          </div>
         ))}
-      </div>
+      </Reveal>
     </Section>
   );
 }

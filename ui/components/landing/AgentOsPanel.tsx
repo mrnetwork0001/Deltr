@@ -1,7 +1,8 @@
 // Section 7: the Skills Hub packaging status (stated as it is in the checkout),
 // the bridge CLI and an honest note on the Binance MCP upstream.
 import { BINANCE_MCP_ADD, BINANCE_MCP_URL, BRIDGE_COMMANDS, SKILL_INSTALL, SKILL_RUN, SKILL_STATUS, UPSTREAM_KINDS } from "@/lib/landing";
-import { BRAND, Card, Code, Mono, Section, STATUS, Tag } from "./Section";
+import Reveal from "./Reveal";
+import { BRAND, Card, Code, Mono, Section, STATUS, Tag, nth } from "./Section";
 
 const KIND_COLOR: Record<string, string> = { official: STATUS.good, shim: BRAND.cake, none: "#6b7280" };
 
@@ -13,7 +14,8 @@ export default function AgentOsPanel() {
       title="A bridge to the Binance MCP server, and a Skills Hub skill"
       lead="Deltr discovers the hosted Binance MCP upstream, reports exactly which upstream it could reach, and ships as a Skills Hub skill. It never claims more than it exercised."
     >
-      <div className="grid gap-4 lg:grid-cols-2">
+      <Reveal className="stagger grid gap-4 lg:grid-cols-2">
+        <div className="min-w-0" style={nth(0)}>
         <Card>
           <h3 className="text-base font-semibold text-gray-100">Connect the Binance MCP server next to Deltr</h3>
           <Code className="mt-3">{BINANCE_MCP_ADD}</Code>
@@ -33,7 +35,9 @@ export default function AgentOsPanel() {
           <Code className="mt-1">{SKILL_INSTALL}</Code>
           <Code className="mt-1">{SKILL_RUN}</Code>
         </Card>
+        </div>
 
+        <div className="min-w-0" style={nth(1)}>
         <Card>
           <h3 className="text-base font-semibold text-gray-100">The bridge CLI</h3>
           <p className="mt-1 text-sm text-gray-400">
@@ -48,18 +52,20 @@ export default function AgentOsPanel() {
             ))}
           </ul>
         </Card>
-      </div>
+        </div>
+      </Reveal>
 
-      <Card className="mt-4">
+      <Reveal className="mt-4">
+      <Card>
         <h3 className="text-base font-semibold text-gray-100">Upstream, reported honestly</h3>
         <p className="mt-1 text-sm text-gray-400">
           The official Binance MCP upstream is OAuth-gated. The bridge tries it first, falls back to the local testnet-backed shim, and reports the
           result on the dashboard status bar as one of three kinds. A 401 on the official endpoint is reported as <Mono>authorized: false</Mono>,
           never as a working connection.
         </p>
-        <ul className="mt-4 grid gap-3 md:grid-cols-3">
-          {UPSTREAM_KINDS.map((u) => (
-            <li key={u.kind} className="rounded-md border border-ink-700 bg-ink-950 p-3">
+        <ul className="stagger mt-4 grid gap-3 md:grid-cols-3">
+          {UPSTREAM_KINDS.map((u, i) => (
+            <li key={u.kind} className="rounded-md border border-ink-700 bg-ink-950 p-3" style={nth(i + 1)}>
               <Tag color={KIND_COLOR[u.kind] ?? "#9ca3af"}>upstream: {u.kind}</Tag>
               <p className="mt-2 text-sm text-gray-400">{u.meaning}</p>
             </li>
@@ -70,6 +76,7 @@ export default function AgentOsPanel() {
           gate always sits in front of the exchange.
         </p>
       </Card>
+      </Reveal>
     </Section>
   );
 }

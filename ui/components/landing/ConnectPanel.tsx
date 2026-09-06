@@ -3,7 +3,8 @@
 // per-phase list of name + use that works without hover.
 import { useState } from "react";
 import { CLIENT_SNIPPETS, MCP_RESOURCES, MCP_URL, STDIO_SNIPPET, TOOLS } from "@/lib/landing";
-import { Card, Code, Mono, Section, SERIES, Tag } from "./Section";
+import Reveal from "./Reveal";
+import { Card, Code, Mono, Section, SERIES, Tag, nth } from "./Section";
 
 const PHASE_COLOR: Record<NonNullable<(typeof TOOLS)[number]["phase"]>, string> = {
   read: "#9ca3af",
@@ -29,8 +30,9 @@ export default function ConnectPanel() {
         </>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+      <Reveal className="stagger grid gap-4 lg:grid-cols-5">
+        <div className="min-w-0 lg:col-span-3" style={nth(0)}>
+        <Card>
           <div role="tablist" aria-label="MCP client" className="flex flex-wrap gap-1.5">
             {CLIENT_SNIPPETS.map((s) => {
               const on = s.id === snippet.id;
@@ -60,8 +62,10 @@ export default function ConnectPanel() {
             <Code className="mt-2">{STDIO_SNIPPET}</Code>
           </details>
         </Card>
+        </div>
 
-        <Card className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2" style={nth(1)}>
+        <Card>
           <h3 className="text-base font-semibold text-gray-100">The 18 tools</h3>
           <p className="mt-1 text-sm text-gray-400">Coloured by phase; each one is described below. A VETO is final for the same inputs; change capital or leverage instead of retrying.</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -91,13 +95,15 @@ export default function ConnectPanel() {
             </li>
           </ul>
         </Card>
-      </div>
-      <h3 className="mt-6 text-base font-semibold text-gray-100">What each tool does</h3>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">
-        {PHASES.map((ph) => {
+        </div>
+      </Reveal>
+      <Reveal className="mt-6">
+      <h3 className="text-base font-semibold text-gray-100">What each tool does</h3>
+      <div className="stagger mt-2 grid gap-2 md:grid-cols-2">
+        {PHASES.map((ph, i) => {
           const list = TOOLS.filter((t) => (t.phase ?? "read") === ph);
           return (
-            <details key={ph} open className="rounded-md border border-ink-700 bg-ink-900">
+            <details key={ph} open className="rounded-md border border-ink-700 bg-ink-900" style={nth(i)}>
               <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-gray-200">
                 <span className="inline-block h-2 w-2 rounded-sm" style={{ background: PHASE_COLOR[ph] }} aria-hidden />
                 <span className="font-medium">{ph}</span>
@@ -115,6 +121,7 @@ export default function ConnectPanel() {
           );
         })}
       </div>
+      </Reveal>
     </Section>
   );
 }
