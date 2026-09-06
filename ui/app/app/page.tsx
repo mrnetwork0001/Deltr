@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot } from "@/lib/types";
 import { fetchMockSnapshot, fetchSnapshot, openStream } from "@/lib/api";
-import StatusBar from "@/components/StatusBar";
+import StatusBar, { KpiStrip } from "@/components/StatusBar";
 import SpreadChart from "@/components/SpreadChart";
 import EdgeWaterfall from "@/components/EdgeWaterfall";
 import PositionsTable from "@/components/PositionsTable";
@@ -84,52 +84,51 @@ export default function Page() {
   const market = snap?.market ?? null;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-[1800px] flex-col gap-2 p-2">
-      <div className="min-w-0 overflow-x-auto">
-        <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
-      </div>
-
-      {!snap ? (
-        <div className="flex h-64 items-center justify-center rounded-md border border-ink-700 bg-ink-900 text-sm text-gray-500">
-          connecting to Deltr…
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-            <div className="flex flex-col gap-2 lg:col-span-5">
-              <SpreadChart history={snap.history} market={market} minEdgeBps={status?.min_edge_bps ?? snap.opportunity?.min_edge_bps_used ?? null} />
-              <EdgeWaterfall
-                edge={snap.edge}
-                market={market}
-                actionable={snap.opportunity ? snap.opportunity.is_actionable : null}
-                reason={snap.opportunity?.reason ?? null}
-                mock={mock}
-              />
-            </div>
-            <div className="lg:col-span-4">
-              <PositionsTable positions={snap.positions} portfolio={portfolio} market={market} status={status} receipts={snap.receipts} mock={mock} onReceipt={setSelectedTrace} />
-            </div>
-            <div className="lg:col-span-3">
-              <RiskGateLog decisions={snap.decisions} status={status} mock={mock} onChanged={refresh} />
-            </div>
+    <div className="min-h-screen">
+      <StatusBar status={status} portfolio={portfolio} mock={mock} transport={transport} lastUpdate={lastUpdate} />
+      <main className="mx-auto flex max-w-[1800px] flex-col gap-3 p-4">
+        {!snap ? (
+          <div className="flex h-64 items-center justify-center rounded-lg border border-ink-700 bg-ink-900 text-sm text-gray-500">
+            connecting to Deltr…
           </div>
+        ) : (
+          <>
+            <KpiStrip status={status} portfolio={portfolio} edge={snap.edge} opportunity={snap.opportunity} positions={snap.positions} decisions={snap.decisions} />
 
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              <TradeTrace receipts={snap.receipts} prompts={snap.prompts} selectedTraceId={selectedTrace} onSelectTrace={setSelectedTrace} />
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+              <div className="flex min-w-0 lg:col-span-5">
+                <SpreadChart history={snap.history} market={market} minEdgeBps={status?.min_edge_bps ?? snap.opportunity?.min_edge_bps_used ?? null} />
+              </div>
+              <div className="flex min-w-0 lg:col-span-4">
+                <PositionsTable positions={snap.positions} portfolio={portfolio} market={market} status={status} receipts={snap.receipts} mock={mock} onReceipt={setSelectedTrace} />
+              </div>
+              <div className="flex min-w-0 lg:col-span-3 lg:row-span-2">
+                <RiskGateLog decisions={snap.decisions} status={status} mock={mock} onChanged={refresh} />
+              </div>
+              <div className="flex min-w-0 lg:col-span-5">
+                <EdgeWaterfall
+                  edge={snap.edge}
+                  market={market}
+                  actionable={snap.opportunity ? snap.opportunity.is_actionable : null}
+                  reason={snap.opportunity?.reason ?? null}
+                  mock={mock}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-3 lg:col-span-4">
+                <PromptConsole status={status} mock={mock} onTrace={setSelectedTrace} onChanged={refresh} />
+                <McpActivity activity={snap.activity} status={status} onSelectTrace={setSelectedTrace} />
+              </div>
+              <div className="flex min-w-0 lg:col-span-12">
+                <TradeTrace receipts={snap.receipts} prompts={snap.prompts} selectedTraceId={selectedTrace} onSelectTrace={setSelectedTrace} />
+              </div>
             </div>
-            <div className="lg:col-span-5">
-              <McpActivity activity={snap.activity} status={status} onSelectTrace={setSelectedTrace} />
-            </div>
-          </div>
-
-          <PromptConsole status={status} mock={mock} onTrace={setSelectedTrace} onChanged={refresh} />
-        </>
-      )}
-      <footer className="px-1 py-2 text-xs text-gray-500 sm:text-sm">
-        Deltr never takes a directional bet, never talks to production, and no order reaches Binance without the deterministic zero-LLM risk gate.
-        Funding figures are testnet-derived and indicative.
-      </footer>
-    </main>
+          </>
+        )}
+        <footer className="px-1 py-3 text-center text-[11px] text-gray-500">
+          Deltr never takes a directional bet and no order reaches Binance without the deterministic zero-LLM risk gate. Funding figures in
+          paper mode are testnet-derived and indicative.
+        </footer>
+      </main>
+    </div>
   );
 }
