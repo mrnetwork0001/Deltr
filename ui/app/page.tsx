@@ -15,6 +15,9 @@ export default function LandingPage() {
   return (
     <>
       <style>{`html{scroll-behavior:smooth;scroll-padding-top:4.5rem}`}</style>
+      <noscript>
+        <style>{`.reveal,.reveal .stagger>*{opacity:1!important;transform:none!important}`}</style>
+      </noscript>
       <Nav />
       <main className="overflow-x-hidden">
         <Hero />

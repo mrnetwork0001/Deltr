@@ -1,5 +1,9 @@
 // Landing-page primitives: section shell, eyebrow + heading, code block, chips.
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import Reveal from "./Reveal";
+
+// Stagger index for children of a `.stagger` list inside a Reveal (globals.css).
+export const nth = (n: number): CSSProperties => ({ ["--n" as string]: n }) as CSSProperties;
 
 export function Section({
   id,
@@ -19,9 +23,11 @@ export function Section({
   return (
     <section id={id} className={`scroll-mt-20 border-t border-ink-700/70 py-14 sm:py-20 ${className}`}>
       <div className="mx-auto w-full max-w-[calc(50vw+36rem)] px-4 sm:px-6">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-bnb">{eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-100 sm:text-3xl">{title}</h2>
-        {lead ? <div className="mt-3 max-w-3xl text-[15px] leading-relaxed text-gray-400">{lead}</div> : null}
+        <Reveal>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-bnb">{eyebrow}</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-100 sm:text-3xl">{title}</h2>
+          {lead ? <div className="mt-3 max-w-3xl text-[15px] leading-relaxed text-gray-400">{lead}</div> : null}
+        </Reveal>
         <div className="mt-8">{children}</div>
       </div>
     </section>
@@ -29,7 +35,13 @@ export function Section({
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`min-w-0 rounded-lg border border-ink-700 bg-ink-900 p-5 ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`min-w-0 rounded-lg border border-ink-700 bg-ink-900 p-5 transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-gray-600 hover:shadow-[0_14px_40px_rgba(0,0,0,0.35)] ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function Code({ children, className = "" }: { children: string; className?: string }) {
