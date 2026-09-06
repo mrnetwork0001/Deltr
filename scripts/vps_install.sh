@@ -57,6 +57,8 @@ echo "    using $PY ($($PY --version))"
 echo "==> service user + state dir"
 id -u deltr >/dev/null 2>&1 || useradd --system --home /opt/deltr --shell /usr/sbin/nologin deltr
 mkdir -p /var/lib/deltr && chown -R deltr:deltr /var/lib/deltr /opt/deltr
+# the tree is owned by `deltr`, so root's git needs this once for `git pull` to work
+git config --global --add safe.directory /opt/deltr 2>/dev/null || true
 
 echo "==> /etc/deltr.env"
 if [ ! -f /etc/deltr.env ]; then
