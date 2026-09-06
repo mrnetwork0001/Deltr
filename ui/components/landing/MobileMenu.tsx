@@ -4,7 +4,7 @@
 // panel never lingers over the content.
 import { Menu } from "lucide-react";
 import { useRef } from "react";
-import { NAV_LINKS, REPO_URL } from "@/lib/landing";
+import { NAV_LINKS } from "@/lib/landing";
 
 export default function MobileMenu() {
   const ref = useRef<HTMLDetailsElement>(null);
@@ -28,9 +28,6 @@ export default function MobileMenu() {
           </li>
         ))}
         <li className="border-t border-ink-700 sm:hidden">
-          <a href={REPO_URL} target="_blank" rel="noreferrer" className="block rounded px-3 py-2 text-sm text-gray-300 hover:bg-ink-800">
-            GitHub
-          </a>
         </li>
       </ul>
     </details>
