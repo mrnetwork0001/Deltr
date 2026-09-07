@@ -33,7 +33,7 @@ import risk_gate
 from agents.arbitrage_scout import ArbitrageScout
 from agents.hedger import Hedger, SizingError
 from deltr.bus import EventBus
-from deltr.config import Mode, Settings
+from deltr.config import Mode, Settings, LIVE_AUTO_ACK_PHRASE, auto_allowed
 from deltr.edge import HedgeSizing, size_for_capital
 from deltr.funding_history import (
     DEFAULT_HOLDS_DAYS,
@@ -203,13 +203,15 @@ class Engine:
             raise ValueError(
                 f"--replay is refused in {settings.mode.value.upper()}: real orders must never be priced off a recording"
             )
-        if settings.auto_execute and settings.real_orders:
+        if settings.auto_execute and settings.real_orders and not settings.live_auto_ok:
             raise ValueError(
-                f"--auto is PAPER-only: {settings.mode.value.upper()} executions require an explicit confirm"
+                f"--auto in {settings.mode.value.upper()} places real orders unattended: set "
+                f"DELTR_LIVE_AUTO_ACK={LIVE_AUTO_ACK_PHRASE} to allow it (it then runs only while the min edge is >= 0)."
             )
         self.settings: Settings = _apply_overrides(settings, replay_path, min_edge_override)
         self.replay_path: Optional[str] = str(replay_path) if replay_path else None
         self.min_edge_override: Optional[float] = None if min_edge_override is None else float(min_edge_override)
+        self._auto_block_reason: Optional[str] = None
         self.clock: Callable[[], datetime] = clock or utcnow
         self.trade_capital_usd: float = self.settings.capital_usd * TRADE_CAPITAL_FRACTION
 
@@ -523,10 +525,18 @@ class Engine:
                 setter(size)
 
     async def _auto_trade(self, opp: ArbOpportunity) -> None:
-        """``--auto``: propose + execute an actionable opportunity (PAPER only; max one open
-        position per symbol; 5 s cooldown; serialised)."""
+        """``--auto``: propose + execute an actionable opportunity (max one open position per
+        symbol; 5 s cooldown; serialised). With real orders it needs the unattended phrase and it
+        stands down while any min-edge override is active: unattended real money never targets a loss."""
         if self._auto_lock.locked() or self.executor.in_flight:
             return
+        allowed, why = auto_allowed(self.settings, float(self.state.min_edge_bps))
+        if not allowed:
+            if self._auto_block_reason != why:
+                self._auto_block_reason = why
+                self.state.emit("gate", f"auto: standing down: {why}", level="warn")
+            return
+        self._auto_block_reason = None
         if any(p.symbol == opp.symbol for p in self.portfolio.positions("open")):
             return
         now = time.monotonic()

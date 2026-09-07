@@ -112,6 +112,9 @@ LIVE_ACK_PHRASE = "i-understand-this-trades-real-money"
 # or below LIVE_TEST_MAX_NOTIONAL_USD, so the knowingly accepted loss is a few cents.
 LIVE_TEST_ACK_PHRASE = "i-accept-a-small-known-loss"
 LIVE_TEST_MAX_NOTIONAL_USD = 25.0
+# Unattended LIVE: auto-execute may run with real money only with this phrase, and then only while
+# the min edge is at or above 0 (an override, test or otherwise, switches auto off on its own).
+LIVE_AUTO_ACK_PHRASE = "i-understand-this-trades-real-money-unattended"
 # The only BINANCE_API_ENV value LIVE accepts.  "prod" stays refused in every mode: it is the
 # spelling that appears in copied-and-pasted configs, so it never silently arms anything.
 LIVE_API_ENV = "mainnet"
@@ -160,6 +163,7 @@ class Settings(BaseSettings):
     # CLI installed and signed in) are checked against the CLI in the engine's preflight.
     live_ack: Optional[str] = Field(default=None, alias="DELTR_LIVE_ACK")
     live_test_ack: Optional[str] = Field(default=None, alias="DELTR_LIVE_TEST_ACK")
+    live_auto_ack: Optional[str] = Field(default=None, alias="DELTR_LIVE_AUTO_ACK")
     live_max_notional_usd: float = Field(default=250.0, alias="DELTR_LIVE_MAX_NOTIONAL_USD", gt=0)
     live_max_aggregate_usd: float = Field(default=1_000.0, alias="DELTR_LIVE_MAX_AGGREGATE_USD", gt=0)
     execution_style: ExecutionStyle = Field(default=ExecutionStyle.MAKER, alias="DELTR_EXECUTION_STYLE")
@@ -362,6 +366,11 @@ class Settings(BaseSettings):
         return (self.live_ack or "").strip().lower() == LIVE_ACK_PHRASE
 
     @property
+    def live_auto_ok(self) -> bool:
+        """Auto-execute is allowed to spend real money: LIVE/TESTNET with the unattended phrase set."""
+        return self.real_orders and (self.live_auto_ack or "").strip().lower() == LIVE_AUTO_ACK_PHRASE
+
+    @property
     def live_test_override(self) -> bool:
         """LIVE may run with a negative min edge: the test phrase is set AND the per-trade cap is tiny."""
         return (
@@ -556,6 +565,7 @@ class Settings(BaseSettings):
             "data_source": self.data_source_label,
             "live_ack_present": self.live_ack_ok,
             "live_test_override": self.live_test_override,
+            "live_auto_ok": self.live_auto_ok,
             "live_arming_error": self.live_arming_error(),
             "live_max_notional_usd": self.live_max_notional_usd,
             "live_max_aggregate_usd": self.live_max_aggregate_usd,
@@ -582,7 +592,23 @@ def load_settings(**overrides: object) -> Settings:
 
 __all__ = [
     "Mode", "LegOrder", "ExecutionStyle", "HOSTS", "MAX_NOTIONAL_BY_MODE",
-    "ONCHAIN_ACK_PHRASE", "LIVE_ACK_PHRASE", "LIVE_TEST_ACK_PHRASE", "LIVE_TEST_MAX_NOTIONAL_USD", "LIVE_API_ENV",
+    "ONCHAIN_ACK_PHRASE", "LIVE_ACK_PHRASE", "LIVE_TEST_ACK_PHRASE", "LIVE_TEST_MAX_NOTIONAL_USD", "LIVE_AUTO_ACK_PHRASE", "LIVE_API_ENV",
     "FUTURES_MAINNET_REST", "FUTURES_TESTNET_REST", "SPOT_MIRROR_REST",
     "Settings", "load_settings", "mask_url", "REPO_ROOT", "VERSION",
 ]
+
+
+def auto_allowed(settings: "Settings", min_edge_bps: float) -> tuple[bool, Optional[str]]:
+    """May the auto loop place the next order right now?
+
+    PAPER: always (its labelled override is the point of the demo). Real orders: only with the
+    unattended phrase, and only while the threshold is >= 0, so an override (the LIVE test
+    override included) switches unattended trading off rather than letting it chase a known loss.
+    """
+    if not settings.real_orders:
+        return True, None
+    if not settings.live_auto_ok:
+        return False, f"unattended {settings.mode.value.upper()} trading needs DELTR_LIVE_AUTO_ACK"
+    if min_edge_bps < 0:
+        return False, f"min edge is {min_edge_bps:g} bps; unattended real orders run only at >= 0 bps"
+    return True, None

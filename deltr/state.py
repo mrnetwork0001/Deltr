@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
 from deltr.bus import EventBus
-from deltr.config import Settings
+from deltr.config import Settings, auto_allowed
 from deltr.models import (
     ArbOpportunity,
     EdgeBreakdown,
@@ -233,6 +233,9 @@ class State:
             # settings alone can say "configured for LIVE", never "armed".
             real_funds_armed=False,
             onchain_armed=s.onchain_arming_error() is None,
+            auto_execute=bool(s.auto_execute),
+            auto_armed=bool(s.auto_execute) and auto_allowed(s, float(self.min_edge_bps))[0],
+            auto_note=(auto_allowed(s, float(self.min_edge_bps))[1] if s.auto_execute else None),
             wallet_address=None,
             max_notional_usd=float(s.max_notional_usd),
             max_aggregate_usd=(None if s.max_aggregate_usd == float("inf") else float(s.max_aggregate_usd)),

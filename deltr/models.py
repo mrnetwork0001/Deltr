@@ -604,6 +604,10 @@ class SystemStatus(DeltrModel):
     wallet_address: Optional[str] = None       # the Agentic Wallet's PUBLIC address; never a key
     max_notional_usd: Optional[float] = None
     max_aggregate_usd: Optional[float] = None
+    # ---- unattended trading (additive) ----
+    auto_execute: bool = False                 # the auto loop is configured on
+    auto_armed: bool = False                   # ...and allowed to place the next order right now
+    auto_note: Optional[str] = None            # why it is standing down, when it is
 
 
 class Snapshot(DeltrModel):

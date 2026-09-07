@@ -57,7 +57,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--no-ui", action="store_true", help="do not serve or spawn the dashboard")
     p.add_argument("--dev-ui", action="store_true", help="spawn `npm run dev` on :3000 (stdout -> stderr) instead of the static ui/out")
     p.add_argument("--mcp", action="store_true", help="add the stdio MCP transport to THIS process (banner and logs go to stderr)")
-    p.add_argument("--auto", action="store_true", help="PAPER only: auto-execute gate-approved actionable opportunities")
+    p.add_argument("--auto", action="store_true",
+                   help="auto-execute gate-approved actionable opportunities (PAPER freely; TESTNET/LIVE need DELTR_LIVE_AUTO_ACK and run only at min edge >= 0)")
     p.add_argument("--once", action="store_true", help="one tick + scan + explain + propose + gate pre-check, then exit")
     p.add_argument("--json", action="store_true", help="machine-readable --once output; nothing else on stdout")
     p.add_argument("--replay", default=None, metavar="PATH", help="replay a MarketState/v1 JSONL fixture instead of live feeds")
@@ -173,6 +174,9 @@ def banner(settings: Settings, engine: Any, port: int, *, mcp_stdio: bool, ui_no
         + ("   [MIN-EDGE OVERRIDE %g bps]" % engine.min_edge_override if engine.min_edge_override is not None else ""),
         f" symbol     : {s.symbol}   capital ${s.capital_usd:,.0f}   leverage {s.default_leverage:g}x   horizon {s.funding_horizon_hours:g} h   leg order {s.effective_leg_order.value}",
         f" execution  : {s.execution_style_label}",
+        (f" auto       : {'ARMED' if st.auto_armed else 'standing down'}"
+         + (f" ({st.auto_note})" if st.auto_note else (" (unattended real orders, min edge >= 0 only)" if s.real_orders else " (PAPER)"))
+         if s.auto_execute else " auto       : off (operator-driven)"),
         f" data       : {s.data_source_label}",
         f" secrets    : {'present' if s.secrets_present else 'absent'} (BINANCE_API_ENV={s.binance_api_env}; values never printed)",
         f" hosts      : futures {s.hosts['futures_rest']}   data {s.hosts['futures_data_rest']}   spot mirror {s.hosts['spot_rest']}",
