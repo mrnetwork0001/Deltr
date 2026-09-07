@@ -1,0 +1,15 @@
+{
+  "voice": "CwhRBWXzGAHq8TQ4Fs17",
+  "model": "eleven_multilingual_v2",
+  "sections": [
+    { "id": "intro", "text": "Deltr. A delta-neutral basis and funding agent on Binance Agent OS." },
+    { "id": "hero", "text": "It runs one trade. Long BNB on PancakeSwap, short the same quantity of the Binance perpetual. No directional view. What is left is the basis between the two venues, plus the funding the short leg collects." },
+    { "id": "edge", "text": "Before it calls anything actionable, it prices the entire round trip: pool fee, price impact, gas, perp slippage, taker fee, both legs, entry and exit. On live data today that arithmetic comes out negative, and the agent says so." },
+    { "id": "launch", "text": "Everything you are about to see runs on real mainnet data. Press Launch App." },
+    { "id": "paper", "text": "This is paper mode: simulated fills on real prices, trading around the clock under a labelled override, so you can watch the mechanics." },
+    { "id": "prompt", "text": "Ask it in plain language. Rebalance five thousand dollars into a delta-neutral BNB hedge. The agent parses the intent, sizes both legs to the lot step, and runs the plan through a deterministic nineteen-check risk gate. Then it executes: DEX leg first, the perp sized from the actual fill, one receipt with a hash." },
+    { "id": "veto", "text": "Now push it. Fifty thousand at ten x. Vetoed: leverage ten, limit three. Fifty thousand at three x. Vetoed: capital at risk above two percent of equity. Every veto carries the observed value, the limit and the unit. No model sits in this loop, and it answers in microseconds." },
+    { "id": "live", "text": "And this is live mode. Real funds armed. A real position: the DEX leg signed by the Binance Agentic Wallet, the perp leg on Binance mainnet, delta zero. Deltr never holds a key. It trades on its own only when the math says the trade pays, and on most days it declines, on screen." },
+    { "id": "close", "text": "Twenty-two MCP tools, a Skills Hub skill, six hundred and eighty-three tests. Deltr. Delta-neutral by construction." }
+  ]
+}

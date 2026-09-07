@@ -1,0 +1,32 @@
+{
+  "name": "deltr-demo-video",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "capture": "node scripts/capture.js",
+    "narrate": "node scripts/narrate.mjs",
+    "manifest": "node scripts/manifest.mjs",
+    "stills": "node scripts/stills.mjs out/stills 100,503,983,1318,1792,2479,3047,3637",
+    "render": "remotion render src/index.ts Demo out/deltr-demo.mp4 --codec h264 --crf 18",
+    "preview": "remotion studio src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@remotion/bundler": "^4.0.521",
+    "@remotion/cli": "^4.0.521",
+    "@remotion/media-utils": "^4.0.521",
+    "@remotion/renderer": "^4.0.521",
+    "@remotion/transitions": "^4.0.521",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.521",
+    "typescript": "^5.9.3"
+  },
+  "private": true
+}
