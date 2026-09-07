@@ -39,8 +39,22 @@ for kv in DELTR_AUTO_EXECUTE=true DELTR_MIN_EDGE_BPS=-20; do k=${kv%%=*}; grep -
 ```
 
 The auto loop opens at most one position per symbol, holds it (a carry trade holds), and opens the
-next one only after the stop monitor closes it. Auto-execute is PAPER-only in the code: the LIVE
-engine trades only when an operator with its token proposes and executes.
+next one only after the stop monitor closes it.
+
+### Unattended LIVE (real money, only when the math says so)
+
+The LIVE engine can run the same loop, gated by arithmetic instead of a person: it needs its own
+phrase and it stands down while any override is active, so it never chases a known loss. Turn the
+test override off first, then:
+
+```bash
+sed -i '/^DELTR_LIVE_TEST_ACK=/d' /etc/deltr-live.env
+for kv in DELTR_AUTO_EXECUTE=true DELTR_LIVE_AUTO_ACK=i-understand-this-trades-real-money-unattended; do k=${kv%%=*}; grep -q "^$k=" /etc/deltr-live.env && sed -i "s/^$k=.*/$kv/" /etc/deltr-live.env || echo "$kv" >> /etc/deltr-live.env; done; systemctl restart deltr-live
+```
+
+The header then shows AUTO (armed) and the KPI strip keeps showing the live verdict; on a normal day
+that is "not actionable" and no order is placed. The moment basis plus funding beats the round trip
+at the default +3 bps threshold, it hedges within the $25 cap, and the receipt appears on the board.
 
 ## The LIVE instance (real money, read-only to the public)
 
