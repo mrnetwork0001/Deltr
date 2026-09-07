@@ -158,7 +158,7 @@ export default function PositionsTable({ positions, portfolio, market, status, r
                 </div>
 
                 {/* headline metrics */}
-                <div className="grid grid-cols-3 gap-3 border-b border-ink-700/80 px-3 py-3">
+                <div className="grid grid-cols-2 gap-3 border-b border-ink-700/80 px-3 py-3 sm:grid-cols-3">
                   <div className="min-w-0">
                     <Label>Mark-to-close</Label>
                     <div className="mt-0.5 font-mono text-[17px] font-semibold tabular-nums" style={{ color: p.unrealized_pnl_usd >= 0 ? STATUS.good : STATUS.critical }}>

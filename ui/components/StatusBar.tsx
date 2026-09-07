@@ -3,8 +3,8 @@
 // plus the small primitives every panel shares: Panel, Chip, SourceBadge, StatusTag,
 // Label, Field, Stat.
 import Link from "next/link";
-import { AlertTriangle, Check, CircleDot, FlaskConical, KeyRound, Pause, Power, Radio, Rewind, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { AlertTriangle, Check, CircleDot, FlaskConical, KeyRound, Menu, Pause, Power, Radio, Rewind, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import type {
   ArbOpportunity,
   DataSource,
@@ -191,85 +191,174 @@ export default function StatusBar({ status, mock, transport, lastUpdate, engines
   const override = (status?.min_edge_bps ?? 0) < 0;
   const stress = status?.stress_active ?? null;
   const upKind = status?.upstream?.kind ?? "none";
+  const [open, setOpen] = useState(false);
+  // the menu closes itself when the viewport grows past the mobile breakpoint
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => mq.matches && setOpen(false);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [open]);
+
+  const modeChip = (
+    <Chip color={mode === "testnet" ? "#1FC7D4" : mode === "live" ? STATUS.critical : "#F0B90B"} solid title="the mode this engine runs in; no tool or button changes it">
+      {status ? mode.toUpperCase() : "…"}
+    </Chip>
+  );
+  const flags = (
+    <>
+      {status?.replay ? (
+        <Chip color="#1FC7D4" title="Driven by ReplayHub: recorded ticks, not live feeds">
+          <Rewind size={11} /> REPLAY
+        </Chip>
+      ) : null}
+      {override ? (
+        <Chip
+          color={mode === "live" ? STATUS.critical : STATUS.warning}
+          title={
+            mode === "live"
+              ? "LIVE TEST OVERRIDE: the min edge is below 0 under a tiny per-trade cap, so a knowingly small loss is accepted for testing"
+              : "min-edge below 0: negative-edge hedges are allowed so the mechanics are visible (PAPER only)"
+          }
+        >
+          <AlertTriangle size={11} /> {mode === "live" ? "LIVE TEST OVERRIDE" : "MIN-EDGE OVERRIDE"} {status?.min_edge_bps} bps
+        </Chip>
+      ) : null}
+      {stress ? (
+        <Chip color={STATUS.critical} solid title="Stress scenario active: portfolio numbers are simulated, market feeds untouched">
+          <FlaskConical size={11} /> SIMULATED · {stress}
+        </Chip>
+      ) : null}
+      {status?.kill_switch ? (
+        <StatusTag kind="critical">
+          <Power size={11} /> KILL
+        </StatusTag>
+      ) : null}
+      {status?.halted ? <StatusTag kind="serious">HALTED</StatusTag> : null}
+      {mock ? (
+        <Chip color={STATUS.warning} title="Backend unreachable: showing bundled mock snapshot">
+          MOCK
+        </Chip>
+      ) : null}
+    </>
+  );
+  const connection = (
+    <span className="inline-flex items-center gap-1.5" title={lastUpdate ? `last frame ${lastUpdate}` : ""}>
+      <span
+        className="inline-block h-2 w-2 rounded-full"
+        style={{
+          background: transport === "down" ? STATUS.critical : STATUS.good,
+          boxShadow: `0 0 6px ${transport === "down" ? STATUS.critical : STATUS.good}`,
+        }}
+      />
+      <Radio size={11} className="text-gray-500" />
+      {transport === "ws" ? "live · ws" : transport === "poll" ? "live · poll 1 Hz" : "offline"}
+    </span>
+  );
+  const secrets = (
+    <span className="inline-flex items-center gap-1.5" title={`BINANCE_API_ENV=${status?.binance_api_env ?? "?"}`}>
+      <KeyRound size={11} /> secrets {status?.secrets_present ? "present" : "absent"}
+    </span>
+  );
+  const upstream = (
+    <Chip
+      color={upKind === "official" ? STATUS.good : upKind === "shim" ? "#1FC7D4" : "#6b7280"}
+      title={status?.upstream?.error ?? status?.upstream?.url ?? "no Binance MCP upstream"}
+    >
+      upstream: {upKind}
+    </Chip>
+  );
+  const version = (
+    <span className="font-mono tabular-nums">
+      v{status?.version ?? "?"} · up {uptime(status?.uptime_s)}
+    </span>
+  );
+
   return (
     <div className="sticky top-0 z-30 border-b border-ink-700/80 bg-ink-950/90 backdrop-blur">
-      <div className="mx-auto flex h-12 max-w-[1800px] items-center gap-3 px-4">
-        <Link href="/" title="Back to the landing page" className="flex items-center gap-2 transition hover:opacity-80">
+      <div className="mx-auto flex h-12 min-w-0 max-w-[1800px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
+        <Link href="/" title="Back to the landing page" className="flex shrink-0 items-center gap-2 transition hover:opacity-80">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/deltr-mark.png" alt="" className="h-6 w-6" aria-hidden />
           <span className="text-[15px] font-bold tracking-tight text-gray-50">Deltr</span>
         </Link>
-        <span aria-hidden className="h-5 w-px bg-ink-700" />
+        <span aria-hidden className="hidden h-5 w-px bg-ink-700 md:block" />
         {engines.length > 1 && onEngine ? (
-          <EngineSwitch engines={engines} engine={engine} onEngine={onEngine} />
+          <span className="hidden md:inline-flex">
+            <EngineSwitch engines={engines} engine={engine} onEngine={onEngine} />
+          </span>
         ) : null}
-        <Chip color={mode === "testnet" ? "#1FC7D4" : mode === "live" ? STATUS.critical : "#F0B90B"} solid title="the mode this engine runs in; no tool or button changes it">
-          {status ? mode.toUpperCase() : "…"}
-        </Chip>
+        {modeChip}
         {status?.real_funds_armed ? (
-          <StatusTag kind="critical">REAL FUNDS ARMED</StatusTag>
-        ) : null}
-        {status?.replay ? (
-          <Chip color="#1FC7D4" title="Driven by ReplayHub: recorded ticks, not live feeds">
-            <Rewind size={11} /> REPLAY
-          </Chip>
-        ) : null}
-        {override ? (
-          <Chip
-            color={mode === "live" ? STATUS.critical : STATUS.warning}
-            title={
-              mode === "live"
-                ? "LIVE TEST OVERRIDE: the min edge is below 0 under a tiny per-trade cap, so a knowingly small loss is accepted for testing"
-                : "min-edge below 0: negative-edge hedges are allowed so the mechanics are visible (PAPER only)"
-            }
-          >
-            <AlertTriangle size={11} /> {mode === "live" ? "LIVE TEST OVERRIDE" : "MIN-EDGE OVERRIDE"} {status?.min_edge_bps} bps
-          </Chip>
-        ) : null}
-        {stress ? (
-          <Chip color={STATUS.critical} solid title="Stress scenario active: portfolio numbers are simulated, market feeds untouched">
-            <FlaskConical size={11} /> SIMULATED · {stress}
-          </Chip>
-        ) : null}
-        {status?.kill_switch ? (
           <StatusTag kind="critical">
-            <Power size={11} /> KILL
+            <span className="hidden sm:inline">REAL FUNDS ARMED</span>
+            <span className="sm:hidden">ARMED</span>
           </StatusTag>
         ) : null}
-        {status?.halted ? <StatusTag kind="serious">HALTED</StatusTag> : null}
-        {mock ? (
-          <Chip color={STATUS.warning} title="Backend unreachable: showing bundled mock snapshot">
-            MOCK
-          </Chip>
-        ) : null}
+        {/* the secondary flags stay inline from md up; on phones they live in the menu */}
+        <span className="hidden items-center gap-2 md:flex">{flags}</span>
 
-        <div className="ml-auto flex items-center gap-4 text-[11px] text-gray-400">
-          <span className="hidden items-center gap-1.5 md:inline-flex" title={`BINANCE_API_ENV=${status?.binance_api_env ?? "?"}`}>
-            <KeyRound size={11} /> secrets {status?.secrets_present ? "present" : "absent"}
-          </span>
-          <Chip
-            className="hidden md:inline-flex"
-            color={upKind === "official" ? STATUS.good : upKind === "shim" ? "#1FC7D4" : "#6b7280"}
-            title={status?.upstream?.error ?? status?.upstream?.url ?? "no Binance MCP upstream"}
+        {/* desktop right cluster */}
+        <div className="ml-auto hidden items-center gap-4 text-[11px] text-gray-400 md:flex">
+          {secrets}
+          {upstream}
+          {connection}
+          {version}
+        </div>
+
+        {/* phone: connection dot + hamburger */}
+        <div className="ml-auto flex items-center gap-2 md:hidden">
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            title={transport === "ws" ? "live · ws" : transport === "poll" ? "live · poll 1 Hz" : "offline"}
+            style={{
+              background: transport === "down" ? STATUS.critical : STATUS.good,
+              boxShadow: `0 0 6px ${transport === "down" ? STATUS.critical : STATUS.good}`,
+            }}
+          />
+          <button
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-ink-700 bg-ink-900 text-gray-200"
           >
-            upstream: {upKind}
-          </Chip>
-          <span className="inline-flex items-center gap-1.5" title={lastUpdate ? `last frame ${lastUpdate}` : ""}>
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{
-                background: transport === "down" ? STATUS.critical : STATUS.good,
-                boxShadow: `0 0 6px ${transport === "down" ? STATUS.critical : STATUS.good}`,
-              }}
-            />
-            <Radio size={11} className="text-gray-500" />
-            {transport === "ws" ? "live · ws" : transport === "poll" ? "live · poll 1 Hz" : "offline"}
-          </span>
-          <span className="hidden font-mono tabular-nums sm:inline">
-            v{status?.version ?? "?"} · up {uptime(status?.uptime_s)}
-          </span>
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
+
+      {open ? (
+        <div className="border-t border-ink-700/80 bg-ink-950 px-3 py-3 md:hidden">
+          <div className="flex flex-col gap-4 text-[12px] text-gray-300">
+            {engines.length > 1 && onEngine ? (
+              <div>
+                <Label className="mb-1.5">Engine</Label>
+                <EngineSwitch engines={engines} engine={engine} onEngine={(k) => { onEngine(k); setOpen(false); }} />
+              </div>
+            ) : null}
+            {status?.replay || override || stress || status?.kill_switch || status?.halted || mock ? (
+              <div>
+                <Label className="mb-1.5">Flags</Label>
+                <div className="flex flex-wrap items-center gap-2">{flags}</div>
+              </div>
+            ) : null}
+            <div>
+              <Label className="mb-1.5">Connection</Label>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-gray-400">
+                {connection}
+                {secrets}
+                {upstream}
+                {version}
+              </div>
+            </div>
+            <Link href="/" className="text-gray-400 underline-offset-2 hover:text-gray-200 hover:underline">
+              ← Back to the landing page
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

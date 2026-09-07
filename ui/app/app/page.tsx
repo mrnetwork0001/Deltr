@@ -135,7 +135,7 @@ export default function Page() {
   const market = snap?.market ?? null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <StatusBar
         status={status}
         portfolio={portfolio}
@@ -146,7 +146,7 @@ export default function Page() {
         engine={engine}
         onEngine={switchEngine}
       />
-      <main className="mx-auto flex max-w-[1800px] flex-col gap-3 p-4">
+      <main className="mx-auto flex max-w-[1800px] flex-col gap-3 p-3 sm:p-4">
         {!snap ? (
           <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-ink-700 bg-ink-900 text-sm text-gray-500">
             <span>
