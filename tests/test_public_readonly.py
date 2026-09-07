@@ -101,3 +101,22 @@ async def test_api_mutations_need_the_token():
         assert r.status_code == 403
         r = await c.post("/api/kill", json={"on": True}, headers={"X-Deltr-Token": "judge-token-123"})
         assert r.status_code != 403
+
+
+async def test_get_mcp_answers_405_so_proxies_never_hold_a_stream():
+    """The transport is stateless: GET /mcp is 405 with Allow, POST keeps working. Seen 2026-09-07:
+    with a 200 SSE stream open through Vercel's rewrite proxy, the client's next POST stalled."""
+    from httpx import ASGITransport, AsyncClient
+
+    from deltr.api.app import create_app
+    from tests.helpers_mcp import build_fake_server
+
+    engine, activity, mcp = build_fake_server("paper")
+    app = create_app(engine, mcp, activity)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        r = await c.get("/mcp", headers={"accept": "text/event-stream"})
+        assert r.status_code == 405 and "POST" in r.headers.get("allow", "")
+        r = await c.get("/mcp/", headers={"accept": "text/event-stream"})
+        assert r.status_code == 405
+        # unrelated GETs are untouched
+        assert (await c.get("/api/health")).status_code != 405

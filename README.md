@@ -127,7 +127,7 @@ one-liners. If :8000 is taken, add `--port 8765` (3000/3001 are reserved for `np
 | `.venv/bin/python main.py --execution-style taker` | LIVE/TESTNET: cross the spread instead of posting. The measured economics say do not |
 | `.venv/bin/python main.py --auto` | auto-execute gate-approved actionable opportunities (PAPER freely; TESTNET/LIVE need `DELTR_LIVE_AUTO_ACK` and run only at min edge >= 0) |
 | `.venv/bin/python main.py --host 0.0.0.0 --port 8000` | bind all interfaces (the VPS showcase); default is loopback only |
-| `.venv/bin/python -m pytest -q` | 683 offline, deterministic tests in about 8 s |
+| `.venv/bin/python -m pytest -q` | 684 offline, deterministic tests in about 8 s |
 
 Node is only needed for the bridge (`npx tsx agents/agent_os_bridge.ts ...`) and `npm run dev`; the
 dashboard is a static export in `ui/out/` served by FastAPI. Python 3.11+ (verified on 3.11, 3.12 and 3.14).
@@ -431,13 +431,13 @@ Every one of those receipts is on the LIVE engine's risk log and receipt list, u
 ## Tests and the measured benchmark
 
 ```bash
-.venv/bin/python -m pytest -q                                   # 683 passed, 9 skipped in about 8 s (offline)
+.venv/bin/python -m pytest -q                                   # 684 passed, 9 skipped in about 8 s (offline)
 .venv/bin/python -m pytest -q -s tests/test_risk_gate.py        # prints the gate median measured here
 .venv/bin/python -c "import risk_gate; print(risk_gate.benchmark())"   # (median_us, p99_us, amortised_us)
 npm run typecheck && npm run bridge:test                        # TypeScript bridge (Node only)
 ```
 
-Counts are whatever the suite prints: 683 passed, 9 skipped on 2026-09-07 with the command above.
+Counts are whatever the suite prints: 684 passed, 9 skipped on 2026-09-07 with the command above.
 Across repeated runs on this Apple M-series laptop the gate median lands between **1.5 and 2.5 µs**
 (p99 between 2.0 and 2.9 µs); the number in your banner is the one that counts, and the test asserts
 only that it stays under 5 µs so slower machines stay green. The suite is offline and deterministic:

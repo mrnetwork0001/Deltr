@@ -81,6 +81,25 @@ def _map_exception(exc: Exception) -> tuple[int, str]:
 
 
 
+class NoServerStreamMiddleware:
+    """Answer ``GET /mcp`` with 405: this transport is stateless and never pushes server-initiated
+    messages, so there is nothing to stream. Clients (the official SDK, Claude Code) treat 405 as
+    "no notification stream" and carry on with plain POSTs. Behind a buffering reverse proxy
+    (Vercel rewrites, some CDNs) an open GET stream stalls the next POST on the same origin, which
+    is exactly what happened on the public showcase; without the stream every request completes."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope.get("type") == "http" and scope.get("method") == "GET" and str(scope.get("path", "")).rstrip("/") == "/mcp":
+            await send({"type": "http.response.start", "status": 405,
+                        "headers": [(b"allow", b"POST, DELETE"), (b"content-type", b"text/plain; charset=utf-8")]})
+            await send({"type": "http.response.body", "body": b"Method Not Allowed: this MCP transport is stateless and offers no server-initiated stream; use POST."})
+            return
+        await self.app(scope, receive, send)
+
+
 class PublicReadOnlyMiddleware:
     """Refuse every mutating /api request unless the caller presents DELTR_API_TOKEN.
 
@@ -198,6 +217,7 @@ def create_app(engine: Any, mcp: Any, activity: Any, *, ui_dir: Optional[Path] =
 
     app.add_middleware(ErrorEnvelopeMiddleware)
     app.add_middleware(PublicReadOnlyMiddleware, settings=getattr(engine, "settings", None))
+    app.add_middleware(NoServerStreamMiddleware)
     app.add_middleware(McpBarePathMiddleware)
 
     # ---- routes --------------------------------------------------------------------------
