@@ -88,6 +88,11 @@ export default function PositionsTable({ positions, portfolio, market, status, r
   const intervalH = market?.funding?.interval_h ?? 8;
   const mark = market?.perp_ref_price ?? null;
   const testnet = status?.mode === "testnet";
+  const live = status?.mode === "live";
+  // When the opening receipt is not in the snapshot (receipts are per process; a restart loses them)
+  // the badge falls back to what the mode actually routes to, never to "paper" for a real fill.
+  const dexFallback: DataSource = live ? "binance-agentic-wallet" : "paper";
+  const perpFallback: DataSource = live ? "binance-futures-mainnet" : testnet ? "binance-futures-testnet" : "paper";
   const pnl = portfolio?.total_pnl_usd ?? 0;
 
   const unwind = async (id: string) => {
@@ -146,14 +151,14 @@ export default function PositionsTable({ positions, portfolio, market, status, r
 
                 {/* legs */}
                 <div className="grid grid-cols-2 divide-x divide-ink-700/80 border-b border-ink-700/80">
-                  <Leg color={SERIES.dex} label="DEX long" venue="PancakeSwap V3" q={p.dex_qty} price={p.dex_entry} source={fillSource(p, receipts, 0, "paper")} />
+                  <Leg color={SERIES.dex} label="DEX long" venue="PancakeSwap V3" q={p.dex_qty} price={p.dex_entry} source={fillSource(p, receipts, 0, dexFallback)} />
                   <Leg
                     color={SERIES.perp}
                     label="Perp short"
                     venue="Binance USDⓈ-M"
                     q={p.perp_qty}
                     price={p.perp_entry}
-                    source={fillSource(p, receipts, 1, testnet ? "binance-futures-testnet" : "paper")}
+                    source={fillSource(p, receipts, 1, perpFallback)}
                   />
                 </div>
 
