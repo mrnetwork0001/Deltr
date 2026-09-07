@@ -208,6 +208,20 @@ export default function StatusBar({ status, mock, transport, lastUpdate, engines
   );
   const flags = (
     <>
+      {status?.auto_execute ? (
+        <Chip
+          color={status.auto_armed ? STATUS.good : "#6b7280"}
+          title={
+            status.auto_armed
+              ? mode === "paper"
+                ? "auto-execute: the engine opens a paper hedge on its own whenever the gate approves one"
+                : "auto-execute: the engine places REAL orders on its own, only while the min edge is >= 0 and every check passes"
+              : `auto-execute is configured but standing down: ${status.auto_note ?? ""}`
+          }
+        >
+          AUTO{status.auto_armed ? "" : " · STANDING DOWN"}
+        </Chip>
+      ) : null}
       {status?.replay ? (
         <Chip color="#1FC7D4" title="Driven by ReplayHub: recorded ticks, not live feeds">
           <Rewind size={11} /> REPLAY
@@ -338,7 +352,7 @@ export default function StatusBar({ status, mock, transport, lastUpdate, engines
                 <EngineSwitch engines={engines} engine={engine} onEngine={(k) => { onEngine(k); setOpen(false); }} />
               </div>
             ) : null}
-            {status?.replay || override || stress || status?.kill_switch || status?.halted || mock ? (
+            {status?.auto_execute || status?.replay || override || stress || status?.kill_switch || status?.halted || mock ? (
               <div>
                 <Label className="mb-1.5">Flags</Label>
                 <div className="flex flex-wrap items-center gap-2">{flags}</div>

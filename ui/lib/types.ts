@@ -495,6 +495,10 @@ export interface SystemStatus {
   wallet_address: string | null;
   max_notional_usd: number | null;
   max_aggregate_usd: number | null;
+  /** Unattended trading: configured on, allowed right now, and why not when it is not. */
+  auto_execute?: boolean;
+  auto_armed?: boolean;
+  auto_note?: string | null;
 }
 
 export interface Snapshot {
