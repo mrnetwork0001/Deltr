@@ -28,6 +28,20 @@ scripts/deploy_vps.sh user@VPS_IP
 
 It rsyncs the tree to `/opt/deltr` (never `.env`, never `state/`) and runs the same installer.
 
+## Make the PAPER showcase trade around the clock
+
+Paper needs no key. Left at the honest +3 bps threshold it never trades (the live edge is about
+-11 bps), so the showcase runs auto-execute with the labelled paper override; the amber
+MIN-EDGE OVERRIDE chip stays on the public page the whole time:
+
+```bash
+for kv in DELTR_AUTO_EXECUTE=true DELTR_MIN_EDGE_BPS=-20; do k=${kv%%=*}; grep -q "^$k=" /etc/deltr.env && sed -i "s/^$k=.*/$kv/" /etc/deltr.env || echo "$kv" >> /etc/deltr.env; done; systemctl restart deltr
+```
+
+The auto loop opens at most one position per symbol, holds it (a carry trade holds), and opens the
+next one only after the stop monitor closes it. Auto-execute is PAPER-only in the code: the LIVE
+engine trades only when an operator with its token proposes and executes.
+
 ## The LIVE instance (real money, read-only to the public)
 
 Install it disarmed, then arm it yourself on the box:
