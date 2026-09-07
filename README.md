@@ -18,11 +18,12 @@ trip is about 16.6 bps and carry clears it in 3.8 % of 7-day windows on BNBUSDT;
 8.6 bps and 36.3 %. That result is why LIVE posts the perp leg as a maker by default and treats an
 unfilled post-only order as a failure rather than crossing the spread.
 
-**Market data is real Binance mainnet in every mode** (keyless, read-only). Deltr now also *has* a
-LIVE mode that places real mainnet orders and executes a real on-chain leg through the Binance
-Agentic Wallet. **Deltr has not yet placed a mainnet order.** The capability is built and tested
-against fakes; nothing here has been armed, no wallet has been created or funded, and the wallet CLI
-on this machine reports `UNCONNECTED`.
+**Market data is real Binance mainnet in every mode** (keyless, read-only). Deltr also has a LIVE
+mode that places real mainnet orders and executes a real on-chain leg through the Binance Agentic
+Wallet, and **it has run for real**: on 2026-09-07 the public LIVE engine opened a 0.01 BNB hedge
+with a maker short on Binance USDⓈ-M Futures (order 95385108461) and a PancakeSwap buy signed by
+the Agentic Wallet (BSC tx `0xc715c1e001fc30ebe4bc757f27f749b5ec909751693d86fba4adbf16061f4441`),
+5.5 s apart, under a $25 cap and the labelled LIVE test override. The receipt is below.
 
 Built for the Binance Agent OS Mini Hackathon (Track A). Apache-2.0, skill folder MIT.
 
@@ -267,7 +268,8 @@ default minimum the same replay returns `VETO NEGATIVE_EDGE: -15.28 bps < 3.00 b
 (from a clean `state/paper/replay/`; if you ran the receipt command first, the paper position it
 opened makes the next default run veto `CAPITAL_CAPACITY` instead, which is the aggregate-capacity
 check doing its job). The agent has never traded on its own signal on live data: every live scan so
-far has come out between -10 and -15 bps and declined.
+far has come out between -10 and -15 bps and declined. The one mainnet hedge it holds was opened
+under the labelled LIVE test override (below), not on a positive edge.
 
 ## Agent OS skill (Track A)
 
@@ -294,7 +296,7 @@ API (`DELTR_API`, default `http://127.0.0.1:8000`) and never prints secrets.
 | Local shim (`deltr/mcp/binance_shim_server.py`) | stdio, 9 tools shaped like the market / account / trade scopes, backed by the Binance Futures testnet and the public spot mirror; refuses `prod`. `upstream-status` reports `kind: shim` with the official failure reason attached |
 | Binance tool names | the shim serves 6 of its 9 tools under official Agent OS names (`spot.ticker24hr`, `spot.depth`, `futures_usds.premiumIndexKlineData`, `futures_usds.exchangeInformation`, `futures_usds.futuresAccountBalanceV3`, `futures_usds.positionInformationV2`) read from `tests/fixtures/binance_mcp_tools.json`. Those names were **transcribed from a third-party published inventory dated 2026-09-02, not captured from our own session**, and are not claimed to have been verified against Binance; the fixture's `provenance` block says so and `tests/test_shim_tool_names.py` enforces it. That inventory lists no write-capable trade tool, so `place_futures_order`, `set_leverage` and `get_funding_rate` keep Deltr-local names. See `docs/MCP_SETUP.md` § Tool-name compatibility |
 | Order path | the Python executor never routes an order through an upstream MCP. Testnet orders go straight to the Binance Futures testnet REST API, signed locally, behind the gate; LIVE perp orders go the same way to `fapi.binance.com`. The LIVE on-chain leg goes to the Binance Agentic Wallet CLI, which signs it. The bridge forwards only `get_*` upstream calls; trade-shaped calls are refused and routed through Deltr's gate |
-| Mainnet orders | **none placed.** LIVE is implemented and covered by tests against fakes; it has never been armed on this machine, no wallet has been created or funded, and `baw wallet status` reports `UNCONNECTED`. Nothing in this repo claims a mainnet fill |
+| Mainnet orders | **placed, on the public LIVE engine (2026-09-07).** One 0.01 BNB hedge: Binance USDⓈ-M maker short, order 95385108461, and a PancakeSwap V3 buy signed by the Agentic Wallet, BSC tx `0xc715c1e0…f4441`. Three earlier attempts failed safely and each taught the wrapper a real CLI field (see "First mainnet hedge") |
 | `fapi.binance.com` from this machine | reachable and answering 200 **only through a public resolver**: this build machine's default resolver returns nothing for the hostname. Deltr raises an actionable DNS error naming both `dig` commands rather than substituting another venue or simulated data. The public showcase VPS resolves it and runs on live mainnet data |
 
 ```bash
@@ -323,8 +325,8 @@ the same Claude Code session; Deltr does not perform that task on your behalf an
 
 ## LIVE mode (real money)
 
-**Deltr has not placed a mainnet order.** The capability below is built, wired and tested against
-fakes and scripted venues; it has never been armed here.
+LIVE has run on the public showcase VPS with about $20 of real funds; the first mainnet hedge and
+the three failed attempts before it are documented at the end of this section.
 
 LIVE refuses to start unless **all six** of these are true, and the refusal names the first one that
 is not:
@@ -394,6 +396,36 @@ unit; `INSTANCE=live` installs the second, disarmed engine):
 Vercel serves the static site and proxies `/api`, `/mcp` (PAPER) and `/live/api`, `/live/mcp` (LIVE)
 to the two engines, so the browser only ever talks to one https origin. Step by step:
 [docs/VPS_RUNBOOK.md](docs/VPS_RUNBOOK.md).
+
+### First mainnet hedge (2026-09-07, public LIVE engine, $25 cap, LIVE test override on)
+
+```json
+{"id": "rcpt_56d15285fc33", "plan_id": "plan_342c864c6e63", "source": "api", "mode": "live", "status": "filled",
+ "position_id": "pos_87fed9625f83", "residual_delta_base": 2.82e-06, "realized_cost_usd": 0.0076, "legging_window_ms": 5500,
+ "decision": {"approved": true, "code": "OK", "latency_us": 54.201, "dd_state": "NORMAL", "checks": ["KILL_SWITCH", "…", "NEGATIVE_EDGE"]},
+ "plan": {"qty": 0.01, "notional_usd": 7.49, "leverage": 2.0, "expected_edge_bps": -19.45, "roundtrip_cost_bps": 25.21},
+ "fills": [
+   {"venue": "binance_futures", "side": "SELL", "qty": 0.01, "price": 749.28, "fee_usd": 0.0015, "simulated": false,
+    "source": "binance-futures-mainnet", "ref": "95385108461"},
+   {"venue": "pancakeswap_v3", "side": "BUY", "qty": 0.0100028, "price": 748.886, "fee_usd": 0.0061, "simulated": false,
+    "source": "binance-agentic-wallet", "ref": "0xc715c1e001fc30ebe4bc757f27f749b5ec909751693d86fba4adbf16061f4441"}],
+ "steps": ["plan", "scan", "gate", "cex_fill", "dex_fill", "position", "receipt"],
+ "sha256": "a4c2d82d9c0abefc75629f056bffafbdb38367ad3ed0de1944783350b54de490", "ts": "2026-09-07T03:19:55.810443Z"}
+```
+
+The BSC transaction reads back from a public RPC as status `0x1` in block 120421309: 7.49 USDT out of
+the wallet, 0.010003 WBNB in. The expected edge was -19 bps; the trade exists to prove the path, and
+it lost about a cent of fees as expected.
+
+What the three attempts before it did, all with real money and all handled by the safety paths:
+
+| Attempt | What happened | What it fixed |
+|---|---|---|
+| 1 | perp maker short filled; the wallet's swap preview read as "would receive 0"; Deltr refused the leg and reversed the perp (cost $0.013) | the quote parser did not know baw 1.9's `toCoinAmount` field |
+| 2 | maker short posted for 8 s, never hit, cancelled; nothing to reverse | the maker window is a setting (`DELTR_MAKER_WAIT_MS`), raised to 30 s for the test |
+| 3 | perp filled; the swap executed on chain in 2 s, but the swap command echoed a different order id than the wallet booked, the confirmation poll saw an empty page, Deltr called the leg unconfirmed, engaged the kill switch and reversed the perp; the WBNB was swapped back by hand | confirmation now matches the booked order on tokens, amount and time, and reads `toTokenActualQty` |
+
+Every one of those receipts is on the LIVE engine's risk log and receipt list, unedited.
 
 ## Tests and the measured benchmark
 
