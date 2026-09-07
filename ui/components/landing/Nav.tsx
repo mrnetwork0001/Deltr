@@ -20,7 +20,7 @@ export default function Nav() {
             </li>
           ))}
         </ul>
-        <div className="flex items-center gap-2 lg:ml-2">
+        <div className="ml-auto flex items-center gap-2 lg:ml-2">
           <MobileMenu />
         </div>
       </div>
