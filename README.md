@@ -8,6 +8,9 @@ price impact, BSC gas, perp slippage, taker fee, both legs, entry and exit) befo
 anything actionable. On live data today the arithmetic comes out around -14 bps and the agent
 declines. That is the finding, and the numbers are on screen.
 
+<img width="2974" height="1686" alt="image" src="https://github.com/user-attachments/assets/2ef403ab-0753-409b-a971-ef6aafe52087" />
+
+
 A scan of the public hackathon repositories on 2026-09-02 found no other entry running a two-venue
 delta-neutral basis and funding strategy. That survey is ours and it is not exhaustive.
 
